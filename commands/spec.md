@@ -1,12 +1,14 @@
 Escribe la spec formal de una feature ANTES de generar codigo.
-Esta es la Etapa 1 del pipeline: SPEC → GENERATE → VALIDATE → HARDEN → REVIEW.
+Etapa 1 del pipeline: SPEC → BUILD → CHECK → SHIP → RETRO.
+Las specs aprobadas se guardan en `.stania/specs/` para referencia futura.
 
 ## Proceso
 
-### 1. Identificar el scope
+### 1. Identificar scope
 
-Lee CLAUDE.md para entender el proyecto y la arquitectura.
-Si existe docs/02-architecture.md o equivalente, leerlo.
+Lee CLAUDE.md y `.stania/config.json` para entender el proyecto.
+Si existe `.stania/domain-model.json`, leerlo para contexto del dominio.
+Si existe docs/02-architecture.md, leerlo.
 
 Pregunta al usuario si no esta claro:
 - Que feature/cambio quiere hacer
@@ -21,7 +23,8 @@ Formato obligatorio:
 ## Feature: [nombre descriptivo]
 
 **Bounded context**: [nombre]
-**Capas afectadas**: Domain → Application → Infrastructure (listar solo las que aplican)
+**Aggregate**: [nombre]
+**Capas afectadas**: Domain / Application / Infrastructure
 
 **Input**: [tipo y campos]
 **Output**: Result<[tipo], [ErrorType]>
@@ -45,22 +48,40 @@ Formato obligatorio:
   - [caso que debe tener test obligatorio]
 ```
 
+Si el aggregate existe en `.stania/domain-model.json`, usar los invariantes,
+eventos y ports definidos ahi como base. Agregar los especificos de esta feature.
+
 ### 3. Validar la spec
 
-Antes de presentarla al usuario, verificar:
-- Cada invariante tiene al menos un test critico asociado?
-- Cada error tiene condicion clara de cuando ocurre?
+Antes de presentar, verificar:
+- Cada invariante tiene al menos un test critico?
+- Cada error tiene condicion clara?
 - Hay al menos un edge case de concurrencia si aplica?
-- Los tipos de input/output son especificos (no `any`, no `object`)?
+- Los tipos son especificos (no `any`, no `object`)?
+- Es consistente con el domain model?
 
 ### 4. Esperar aprobacion
 
-Presentar la spec al usuario. NO generar codigo hasta que diga que esta bien.
-Si el usuario corrige o agrega algo, actualizar la spec y volver a presentar.
+Presentar la spec. NO generar codigo hasta que el usuario apruebe.
+Si corrige algo, actualizar y volver a presentar.
+
+### 5. Persistir spec
+
+Cuando el usuario aprueba:
+
+1. Crear `.stania/specs/` si no existe
+2. Guardar en `.stania/specs/{feature-slug}.md`
+
+3. Si el aggregate existe en `.stania/progress.json`, actualizar specPath.
+   Si no existe, agregarlo como "pending".
+
+Confirmar: "Spec guardada. Listo para /build."
 
 ## Reglas
 
-- Si no hay suficiente info para definir invariantes → PREGUNTAR, no inventar
+- Si no hay suficiente info → PREGUNTAR, no inventar
 - Nunca asumir reglas de negocio — confirmar con el usuario
-- Si la feature es trivial (config, fix cosmético), decirlo: "esto no necesita spec formal, procedo directo"
-- Si la feature toca domain layer → spec obligatoria, sin excepciones
+- Feature trivial (config, fix cosmetico): "No necesita spec formal, procedo directo"
+- Si toca domain layer → spec obligatoria, sin excepciones
+- Si ya existe spec para este aggregate: "Ya hay una spec. Quieres modificarla o crear una nueva?"
+- Si `.stania/` no existe, igual escribir la spec y mostrarla — solo no persistir

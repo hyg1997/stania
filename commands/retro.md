@@ -1,11 +1,10 @@
-Cierre de sesion. Captura lo aprendido y actualiza contexto para futuras sesiones.
-Correr al final de una sesion de trabajo productiva.
+Cierre de sesion. Captura lo aprendido, actualiza contexto, y guarda resumen en `.stania/progress.json`.
 
 ## Paso 1: Resumen de la sesion
 
-Revisar git log de la sesion (commits de hoy):
+Revisar git log de la sesion:
 ```bash
-git log --oneline --since="today" --author=""
+git log --oneline --since="today"
 ```
 
 Listar:
@@ -16,20 +15,19 @@ Listar:
 
 ## Paso 2: Actualizar docs (si aplica)
 
-Revisar si alguna decision tomada en la sesion debe reflejarse en:
-- CLAUDE.md (cambio de stack, nuevo principio, nueva restriccion)
-- docs/02-architecture.md (nueva decision tecnica, nuevo ADR)
-- docs/05-roadmap.md (marcar items como completados)
-- docs/01-product-spec.md (cambio de spec basado en lo aprendido)
+Revisar si alguna decision debe reflejarse en:
+- CLAUDE.md (cambio de stack, nuevo principio)
+- docs/02-architecture.md (nueva decision tecnica, ADR)
+- docs/05-roadmap.md (items completados)
+- docs/01-product-spec.md (cambio de spec)
 
-Proponer los cambios al usuario. Solo aplicar si aprueba.
-NO agregar cosas triviales — solo lo que de verdad cambia como
-deberia trabajar Claude en sesiones futuras.
+Proponer cambios. Solo aplicar si el usuario aprueba.
+NO agregar cosas triviales — solo lo que cambia como deberia
+trabajar Claude en sesiones futuras.
 
 ## Paso 3: Crear ADR si hubo decision importante
 
-Si se tomo una decision arquitectonica significativa en la sesion,
-crear un ADR en docs/decisions/:
+Si se tomo una decision arquitectonica significativa:
 
 ```markdown
 # ADR-XXX: [titulo]
@@ -44,12 +42,25 @@ Accepted
 [Que decidimos y por que]
 
 ## Consequences
-[Trade-offs aceptados, que ganamos, que perdemos]
+[Trade-offs aceptados]
 ```
 
-## Paso 4: Estado del proyecto
+Guardar en docs/decisions/.
 
-Mostrar al usuario:
+## Paso 4: Actualizar estado
+
+Si `.stania/progress.json` existe, actualizar:
+```json
+{
+  "lastSession": {
+    "date": "[ISO8601]",
+    "summary": "[resumen de 1-2 oraciones de lo hecho]"
+  }
+}
+```
+
+## Paso 5: Reporte
+
 ```
 === SESSION RETRO ===
 Completado:    [lista]
@@ -60,9 +71,12 @@ Docs updated:  [lista]
 Proximo paso sugerido: [que hacer en la siguiente sesion]
 ```
 
+Si hay aggregates pendientes en progress.json, sugerir el primero:
+"Proximo: /spec para [Aggregate] en [BoundedContext]"
+
 ## Reglas
 
 - No guardar info trivial (fixes cosmeticos, renames)
-- Si no hubo decisiones ni aprendizajes → skip retro, solo mostrar resumen
+- Si no hubo decisiones → skip retro, solo mostrar resumen
 - No ser verbose — el usuario quiere cerrar rapido
 - Si hay algo pendiente critico, mencionarlo claramente

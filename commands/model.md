@@ -1,5 +1,4 @@
-Extrae un modelo de dominio DDD completo a partir de una descripcion de negocio.
-Reemplaza la necesidad de disenar bounded contexts manualmente.
+Extrae un modelo de dominio DDD y lo persiste en `.stania/domain-model.json` y `docs/02-architecture.md`.
 
 ## Cuando usar
 
@@ -9,66 +8,76 @@ Reemplaza la necesidad de disenar bounded contexts manualmente.
 
 ## Paso 1: Verificar estado
 
-Buscar si ya existe un modelo de dominio:
-- docs/02-architecture.md con bounded contexts definidos
-- CLAUDE.md con seccion de bounded contexts
-- Cualquier archivo de modelo de dominio existente
+Leer `.stania/domain-model.json` si existe.
+Si no, buscar en:
+- docs/02-architecture.md (seccion bounded contexts)
+- CLAUDE.md (seccion bounded contexts)
 
-Si existe: preguntar "Ya tienes un modelo. Quieres refinarlo o empezar de cero?"
+Si existe modelo:
+"Ya tienes un modelo con N bounded contexts. Quieres refinarlo o empezar de cero?"
+
 Si no existe: proceder a extraccion.
 
-## Paso 2: Recopilar descripcion del negocio
+## Paso 2: Recopilar descripcion
 
-Pedir al usuario que describa su negocio/producto. Guiar con preguntas:
+Pedir al usuario que describa su negocio. Guiar con:
 
 1. **Que hace el sistema?** (1-3 oraciones)
 2. **Quienes son los usuarios/actores?** (roles)
-3. **Cuales son los procesos principales?** (flujos de trabajo)
+3. **Cuales son los procesos principales?** (flujos)
 4. **Que reglas de negocio son criticas?** (invariantes)
 5. **Que eventos importantes ocurren?** (triggers)
 
-Si la descripcion es menor a 3 oraciones, hacer preguntas de follow-up.
+Si la descripcion es corta, hacer preguntas de follow-up.
 NO inventar — extraer solo de lo que el usuario dice.
 
 ## Paso 3: Extraer modelo
 
-A partir de la descripcion, identificar:
+Identificar:
 
 ### Bounded Contexts
-Agrupar conceptos que van juntos. Regla: si dos conceptos usan la misma
+Agrupar conceptos relacionados. Regla: si dos conceptos usan la misma
 palabra con significado distinto, van en contextos diferentes.
 
-### Por cada Bounded Context:
+Clasificar:
+- **core**: ventaja competitiva, logica de negocio principal
+- **supporting**: necesario pero no diferenciador
+- **generic**: commodity (auth, notificaciones)
+
+### Por cada Bounded Context
 
 **Aggregates** (raiz de consistencia transaccional):
 - Nombre
-- Invariantes (reglas que nunca se violan)
+- Invariantes (reglas que NUNCA se violan)
 - Comandos que acepta
 - Eventos que emite
 
 **Value Objects** (inmutables, auto-validantes):
 - Nombre
-- Campos
+- Campos con tipos
 - Reglas de validacion
 
 **Domain Events** (hechos que ya ocurrieron):
-- Nombre (pasado: OrderPlaced, AppointmentBooked)
-- Payload (datos que lleva)
-- Quien lo emite
-- Quien reacciona
+- Nombre en pasado (OrderPlaced, AppointmentBooked)
+- Payload
+- Quien lo emite / quien reacciona
 
 **Ports** (interfaces que el dominio necesita):
 - Repositories (persistencia)
 - External services (APIs, email, SMS)
+- Metodos con firmas
+
+### Relationships
+- upstream_downstream (uno provee, otro consume)
+- shared_kernel (comparten tipos)
+- anti_corruption_layer (traductor entre contextos)
 
 ## Paso 4: Presentar modelo
 
-Formato de presentacion:
-
 ```markdown
-# Modelo de Dominio: [nombre del sistema]
+# Modelo de Dominio: [nombre]
 
-## Bounded Context: [nombre]
+## Bounded Context: [nombre] (core|supporting|generic)
 
 ### Aggregate: [nombre]
 - **Invariantes**: [lista]
@@ -83,22 +92,60 @@ Formato de presentacion:
 - I[nombre]Service: [metodos]
 
 ---
-(repetir por cada bounded context)
+
+## Relaciones
+- [source] → [target]: [tipo]
 ```
 
-## Paso 5: Aprobacion y persistencia
+## Paso 5: Persistir
 
-Presentar el modelo al usuario. Esperar aprobacion.
+Si el usuario aprueba:
 
-Si aprueba: guardar en docs/02-architecture.md (seccion Bounded Contexts)
-y actualizar CLAUDE.md con la lista de bounded contexts.
+1. Guardar `.stania/domain-model.json`:
+```json
+{
+  "name": "[nombre]",
+  "boundedContexts": [...],
+  "relationships": [...]
+}
+```
+
+2. Actualizar `docs/02-architecture.md` (version legible)
+
+3. Actualizar CLAUDE.md con la lista de bounded contexts
+
+4. Inicializar `.stania/progress.json` con aggregates en status "pending":
+```json
+{
+  "aggregates": {
+    "ContextName/AggregateName": {
+      "status": "pending",
+      "layers": { "domain": false, "application": false, "infrastructure": false, "tests": false },
+      "specPath": null, "lastCheck": null, "lastBuild": null
+    }
+  }
+}
+```
 
 Si quiere cambios: iterar hasta que este satisfecho.
+
+## Refinamiento
+
+Si el usuario quiere modificar un modelo existente:
+
+1. Leer `.stania/domain-model.json`
+2. Preguntar que quiere cambiar
+3. Aplicar cambios
+4. Presentar modelo actualizado
+5. Si aprueba: actualizar domain-model.json, docs, y progress.json
+   - Agregar nuevos aggregates como "pending"
+   - Mantener estado de aggregates existentes
 
 ## Reglas
 
 - NO inventar bounded contexts que el usuario no menciono
 - Preferir menos contextos bien definidos que muchos superficiales
-- Cada aggregate debe tener al menos 1 invariante — si no tiene, probablemente es un CRUD simple y no necesita DDD
-- Value objects > primitivos siempre (Email, no string; Money, no number)
-- Si no esta claro si algo es Entity o Value Object, preguntar: "tiene ciclo de vida propio?"
+- Cada aggregate debe tener al menos 1 invariante. Sin invariantes = CRUD simple
+- Value Objects > primitivos siempre (Email, no string; Money, no number)
+- Si no esta claro si es Entity o Value Object → preguntar: "tiene ciclo de vida propio?"
+- Maximo 6-8 bounded contexts. Si hay mas, probablemente se pueden fusionar

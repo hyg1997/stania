@@ -1,15 +1,16 @@
 Inicializa un proyecto profesional desde cero o desde lo que ya exista.
-Analiza el estado actual del directorio y construye todo lo que falta.
+Analiza el estado actual, construye lo que falta, y crea `.stania/` para tracking.
 
 ## Paso 1: Diagnostico
 
-Escanea el directorio actual y reporta que existe:
+Escanea el directorio actual y reporta:
 
 ```
 [ ] Git inicializado (.git/)
 [ ] .gitignore configurado
 [ ] CLAUDE.md (contexto maestro)
-[ ] package.json / pyproject.toml (proyecto inicializado)
+[ ] .stania/ (state tracking)
+[ ] package.json / pyproject.toml / go.mod (proyecto inicializado)
 [ ] Monorepo configurado (turbo.json / pnpm-workspace.yaml)
 [ ] Linter configurado (biome.json / .eslintrc / ruff.toml)
 [ ] TypeScript strict (tsconfig con strict: true)
@@ -17,14 +18,13 @@ Escanea el directorio actual y reporta que existe:
 [ ] Pre-commit hooks (husky / lint-staged)
 [ ] CI/CD (.github/workflows/)
 [ ] Docs estructura (docs/)
-[ ] Design system definido
 ```
 
-Muestra el diagnostico al usuario y espera confirmacion para continuar.
+Muestra el diagnostico y espera confirmacion.
 
 ## Paso 2: Recopilar contexto
 
-Si no existe CLAUDE.md, pregunta al usuario:
+Si no existe CLAUDE.md, pregunta:
 
 1. **Que es el proyecto?** (1 oracion)
 2. **Para quien?** (cliente ideal)
@@ -37,87 +37,127 @@ Si no existe CLAUDE.md, pregunta al usuario:
 5. **Es monorepo?** Si tiene frontend + backend → recomendar si
 
 No preguntar todo — inferir lo posible del contexto.
-Si ya existe CLAUDE.md, leerlo y confirmar que el contexto esta correcto.
+Si ya existe CLAUDE.md, leerlo y confirmar.
 
-## Paso 3: Construir lo que falta
+## Paso 3: Crear .stania/
+
+Crear `.stania/config.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "projectName": "[nombre del proyecto]",
+  "stack": {
+    "language": "[detectado o preguntado]",
+    "framework": "[detectado]",
+    "packageManager": "[detectado]",
+    "testRunner": "[detectado]",
+    "linter": "[detectado]",
+    "typeChecker": "[detectado]"
+  },
+  "architecture": "[clean | mvc | simple]",
+  "hardening": {
+    "mutationThreshold": 80,
+    "coverageTarget": { "domain": 80, "application": 60, "overall": 60 }
+  },
+  "createdAt": "[ISO8601]"
+}
+```
+
+Crear `.stania/progress.json`:
+```json
+{
+  "aggregates": {},
+  "lastSession": null
+}
+```
+
+Agregar a `.gitignore`:
+```
+.stania/progress.json
+.stania/specs/
+```
+
+Mantener en git: `.stania/config.json` y `.stania/domain-model.json`.
+
+## Paso 4: Construir lo que falta
 
 Ejecutar en orden, saltando lo que ya existe:
 
-### 3.1 Git
+### 4.1 Git
 ```bash
 git init (si no existe)
-.gitignore con: node_modules, .env, .env.local, .DS_Store, dist, build, .next, .turbo, __pycache__, .pytest_cache, .mypy_cache, *.log
 ```
+.gitignore con: node_modules, .env, .env.local, .DS_Store, dist, build, .next, .turbo, __pycache__, .pytest_cache, .mypy_cache, *.log
 
-### 3.2 CLAUDE.md
-Crear CLAUDE.md con:
-- Identidad del proyecto (de paso 2)
+### 4.2 CLAUDE.md
+Crear con:
+- Identidad del proyecto
 - Stack decidido
-- Principios de codigo (Clean Architecture si aplica)
-- Flujo de ingenieria: SPEC → GENERATE → VALIDATE → HARDEN → REVIEW
-- Como trabajar conmigo (directo, sin preambulos, preguntar si ambiguo)
+- Principios de codigo
+- Flujo de ingenieria: SPEC → BUILD → CHECK → SHIP → RETRO
 - Referencia a docs/
 
-### 3.3 Docs estructura
+### 4.3 Docs estructura
 ```
 docs/
-├── 00-context.md        ← Contexto del negocio/proyecto
-├── 01-product-spec.md   ← Que hace el producto
-├── 02-architecture.md   ← Decisiones tecnicas
-└── decisions/           ← ADRs futuros
+├── 00-context.md
+├── 01-product-spec.md
+├── 02-architecture.md
+└── decisions/
 ```
-Llenar con lo que se sepa. Dejar TODOs claros en lo que falte.
+Llenar con lo que se sepa. Dejar TODOs claros.
 
-### 3.4 Monorepo (si aplica)
+### 4.4 Monorepo (si aplica)
 Si es monorepo TypeScript:
 - pnpm-workspace.yaml
 - turbo.json con pipelines: build, dev, test, lint, typecheck
-- apps/ y packages/ directorios
+- apps/ y packages/
 
-### 3.5 Tooling de calidad
+### 4.5 Tooling de calidad
+
 TypeScript:
 - tsconfig.json con strict: true, noUncheckedIndexedAccess: true
-- biome.json (reemplaza ESLint + Prettier)
+- biome.json
 - vitest.config.ts
 
 Python:
 - pyproject.toml con mypy strict y ruff
 - pytest configurado
 
-### 3.6 Pre-commit hooks
-- Instalar husky + lint-staged (TS) o pre-commit (Python)
-- Hook: typecheck + lint + format + test en archivos modificados
-- Si falla → no pasa el commit
+Go:
+- golangci-lint config
 
-### 3.7 Scripts en package.json
+### 4.6 Pre-commit hooks
+- Instalar husky + lint-staged (TS) o pre-commit (Python)
+- Hook: typecheck + lint + format en archivos modificados
+
+### 4.7 Scripts en package.json (TypeScript)
 ```json
 {
   "dev": "turbo dev",
   "build": "turbo build",
   "test": "turbo test",
-  "test:domain": "vitest run --project domain",
   "typecheck": "turbo typecheck",
   "lint": "biome check .",
   "lint:fix": "biome check --write .",
-  "format": "biome format --write .",
-  "validate": "pnpm typecheck && pnpm lint && pnpm test",
-  "test:mutate": "stryker run"
+  "validate": "pnpm typecheck && pnpm lint && pnpm test"
 }
 ```
 
-### 3.8 Estructura de codigo (si Clean Architecture)
+### 4.8 Estructura de codigo (si Clean Architecture)
 ```
 src/
-├── domain/          # Zero deps externas
+├── domain/
 │   ├── entities/
 │   ├── value-objects/
 │   ├── events/
-│   └── ports/       # Interfaces
-├── application/     # Commands, Queries, Handlers
+│   └── ports/
+├── application/
 │   ├── commands/
 │   ├── queries/
 │   └── dtos/
-├── infrastructure/  # Implementa ports
+├── infrastructure/
 │   ├── persistence/
 │   ├── external/
 │   └── config/
@@ -127,28 +167,26 @@ src/
     └── integration/
 ```
 
-## Paso 4: Verificacion
+## Paso 5: Verificacion
 
 Correr:
-1. `pnpm install` (o equivalente)
-2. `pnpm typecheck` → debe pasar
-3. `pnpm lint` → debe pasar
-4. `pnpm test` → debe pasar (aunque sea vacio)
-5. `pnpm build` → debe compilar
+1. Install de dependencias
+2. Typecheck → debe pasar
+3. Lint → debe pasar
+4. Test → debe pasar (aunque sea vacio)
 
 Si algo falla, arreglar antes de terminar.
 
-## Paso 5: Primer commit
+## Paso 6: Primer commit
 
-```
+```bash
 git add .
-git commit -m "chore: project bootstrap with engineering tooling"
+git commit -m "chore: project bootstrap with stania engineering tooling"
 ```
 
-## Paso 6: Reporte final
+## Paso 7: Reporte
 
-Mostrar al usuario:
+Mostrar:
 - Que se creo
-- Que quedo pendiente (TODOs en docs)
-- Siguiente paso sugerido (primera feature o completar docs)
-- Commands disponibles: /spec, /build, /check, /ship
+- Que quedo pendiente
+- Siguiente paso: "/model para definir el dominio" o "/spec para la primera feature"

@@ -1,87 +1,82 @@
-Muestra el estado de implementacion del proyecto por bounded context y aggregate.
-Util para saber donde retomar trabajo entre sesiones.
+Muestra el estado de implementacion del proyecto. Lee `.stania/progress.json` primero,
+con fallback a escaneo del filesystem. Util para retomar trabajo entre sesiones.
 
-## Que hace
+## Paso 1: Leer estado
 
-Escanea el codebase y reporta el estado de cada pieza del dominio.
+### Fuente primaria: .stania/progress.json
 
-## Paso 1: Detectar modelo
+Si existe, leerlo. Contiene estado preciso por aggregate:
+- status: pending / in-progress / done / failed
+- layers: domain, application, infrastructure, tests (true/false cada uno)
+- specPath: ruta a la spec aprobada
+- lastCheck, lastBuild: timestamps
 
-Buscar bounded contexts definidos en:
-1. CLAUDE.md (seccion de bounded contexts)
-2. docs/02-architecture.md
-3. Estructura de directorios (src/domain/*, apps/*/src/domain/*)
+Tambien leer lastSession para mostrar cuando fue la ultima sesion.
 
-Si no encuentra modelo definido:
-"No encuentro bounded contexts definidos. Corre /model primero."
+### Fallback: escaneo del filesystem
 
-## Paso 2: Escanear implementacion
+Si `.stania/progress.json` no existe, buscar bounded contexts en:
+1. `.stania/domain-model.json`
+2. CLAUDE.md (seccion bounded contexts)
+3. docs/02-architecture.md
+4. Estructura de directorios (src/domain/*, apps/*/src/domain/*)
 
-Para cada bounded context y aggregate, verificar:
+Si no encuentra modelo: "No encuentro bounded contexts. Corre /model primero."
 
-### Domain Layer
+Para cada aggregate detectado, escanear:
+
 ```bash
-# Buscar archivos de aggregate/entity
-find . -path "*/domain/*" -name "*.ts" -o -name "*.py" | head -50
+# Domain
+find . -path "*/domain/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -50
 
-# Buscar value objects
-find . -path "*/domain/value-objects/*" -o -path "*/domain/*vo*" | head -20
+# Application
+find . -path "*/application/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
 
-# Buscar eventos
-find . -path "*/domain/events/*" -o -path "*/domain/*event*" | head -20
+# Infrastructure
+find . -path "*/infrastructure/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
 
-# Buscar ports/interfaces
-find . -path "*/domain/ports/*" -o -path "*/domain/*port*" -o -path "*/domain/*repository*" | head -20
+# Tests
+find . \( -path "*/tests/*" -o -path "*test*" -o -path "*spec*" \) -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
 ```
 
-### Application Layer
-```bash
-find . -path "*/application/*" -name "*.ts" -o -path "*/application/*" -name "*.py" | head -30
-```
-
-### Infrastructure Layer
-```bash
-find . -path "*/infrastructure/*" -name "*.ts" -o -path "*/infrastructure/*" -name "*.py" | head -30
-```
-
-### Tests
-```bash
-find . -path "*/tests/*" -o -path "*test*" -o -path "*spec*" | grep -v node_modules | head -30
-```
-
-## Paso 3: Reportar
-
-Formato:
+## Paso 2: Reportar
 
 ```
 === PROJECT STATUS ===
+Last session: [fecha] — [resumen]
 
 Bounded Context: [nombre]
-┌──────────────┬────────┬───────┬───────┬───────┐
-│ Aggregate    │ Domain │ App   │ Infra │ Tests │
-├──────────────┼────────┼───────┼───────┼───────┤
-│ Appointment  │ ✅     │ ✅    │ ⬜    │ ✅    │
-│ Tenant       │ ✅     │ ✅    │ ✅    │ ✅    │
-│ VoiceSession │ ⬜     │ ⬜    │ ⬜    │ ⬜    │
-└──────────────┴────────┴───────┴───────┴───────┘
++--------------+--------+-------+-------+-------+------+
+| Aggregate    | Status | Domain| App   | Infra | Tests|
++--------------+--------+-------+-------+-------+------+
+| Appointment  | done   |  Y    |  Y    |  -    |  Y   |
+| Tenant       | done   |  Y    |  Y    |  Y    |  Y   |
+| VoiceSession | pending|  -    |  -    |  -    |  -   |
++--------------+--------+-------+-------+-------+------+
 
 Bounded Context: [nombre]
-┌──────────────┬────────┬───────┬───────┬───────┐
-│ Aggregate    │ Domain │ App   │ Infra │ Tests │
-├──────────────┼────────┼───────┼───────┼───────┤
-│ ...          │        │       │       │       │
-└──────────────┴────────┴───────┴───────┴───────┘
++--------------+--------+-------+-------+-------+------+
+| Aggregate    | Status | Domain| App   | Infra | Tests|
++--------------+--------+-------+-------+-------+------+
+| ...          |        |       |       |       |      |
++--------------+--------+-------+-------+-------+------+
 
 Overall: 4/12 aggregates complete (33%)
-
-NEXT STEP: /spec → VoiceSession aggregate (first incomplete)
+Specs:   3 aprobadas en .stania/specs/
 ```
 
-## Paso 4: Sugerir siguiente accion
+## Paso 3: Sugerir siguiente accion
 
-Basado en el estado:
-- Si hay aggregates sin domain → "/spec para [aggregate]"
-- Si hay domain sin app → "/build para [aggregate] (ya tiene domain)"
-- Si hay app sin infra → "/build para [aggregate] (falta infra)"
-- Si hay todo sin tests → "Faltan tests para [aggregate]"
-- Si todo esta completo → "/check para validar, despues /ship"
+Basado en el estado, en orden de prioridad:
+1. Si hay aggregates sin spec → "/spec para [aggregate]"
+2. Si hay spec sin domain → "/build para [aggregate]"
+3. Si hay domain sin app → "/build para [aggregate] (falta application)"
+4. Si hay app sin infra → "/build para [aggregate] (falta infrastructure)"
+5. Si hay layers sin tests → "Faltan tests para [aggregate]"
+6. Si hay done sin lastCheck → "/check para validar"
+7. Si todo esta completo → "/check para validar, despues /ship"
+
+Mostrar:
+```
+NEXT: /spec → VoiceSession (first incomplete aggregate)
+```

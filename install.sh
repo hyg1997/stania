@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Forja — From vibe coding to production-ready engineering
-# Install: curl -fsSL https://raw.githubusercontent.com/cloudpetals/forja/main/install.sh | bash
+# Stania — From vibe coding to production-ready engineering
+# Install: curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
 # Usage:   bash install.sh [--minimal] [--dry-run] [--uninstall]
 
 set -e
 
-VERSION="1.0.0"
-REPO_URL="https://github.com/cloudpetals/forja"
+VERSION="2.0.0"
+REPO_URL="https://github.com/cloudpetals/stania"
 
 # Colors
 RED='\033[0;31m'
@@ -22,7 +22,7 @@ NC='\033[0m'
 DRY_RUN=false
 MINIMAL=false
 UNINSTALL=false
-FORJA_DIR=""
+STANIA_DIR=""
 
 for arg in "$@"; do
     case $arg in
@@ -33,26 +33,26 @@ for arg in "$@"; do
 done
 
 echo ""
-echo -e "${BOLD}  Forja v${VERSION}${NC}"
+echo -e "${BOLD}  Stania v${VERSION}${NC}"
 echo -e "  ${DIM}From vibe coding to production-ready engineering${NC}"
 echo ""
 
 # Detect source: piped from curl or run from local clone
 if [ -t 0 ] && [ -f "$(dirname "$0")/commands/bootstrap.md" ]; then
-    FORJA_DIR="$(cd "$(dirname "$0")" && pwd)"
-    echo -e "  ${DIM}Source: local (${FORJA_DIR})${NC}"
+    STANIA_DIR="$(cd "$(dirname "$0")" && pwd)"
+    echo -e "  ${DIM}Source: local (${STANIA_DIR})${NC}"
 else
-    FORJA_DIR="$HOME/.forja"
-    echo -e "  ${DIM}Source: remote (cloning to ${FORJA_DIR})${NC}"
+    STANIA_DIR="$HOME/.stania-cli"
+    echo -e "  ${DIM}Source: remote (cloning to ${STANIA_DIR})${NC}"
 
     if [ "$DRY_RUN" = true ]; then
-        echo -e "  ${YELLOW}[dry-run]${NC} Would clone ${REPO_URL} to ${FORJA_DIR}"
+        echo -e "  ${YELLOW}[dry-run]${NC} Would clone ${REPO_URL} to ${STANIA_DIR}"
     else
-        if [ -d "$FORJA_DIR/.git" ]; then
+        if [ -d "$STANIA_DIR/.git" ]; then
             echo -e "  ${DIM}Updating existing clone...${NC}"
-            git -C "$FORJA_DIR" pull --quiet 2>/dev/null || true
+            git -C "$STANIA_DIR" pull --quiet 2>/dev/null || true
         else
-            git clone --quiet "$REPO_URL" "$FORJA_DIR" 2>/dev/null || {
+            git clone --quiet "$REPO_URL" "$STANIA_DIR" 2>/dev/null || {
                 echo -e "  ${RED}Failed to clone. Check your internet connection.${NC}"
                 exit 1
             }
@@ -99,17 +99,17 @@ if [ "$UNINSTALL" = true ]; then
     done
 
     # Remove skill
-    if [ -d "$CLAUDE_SKILLS_DIR/forja" ]; then
+    if [ -d "$CLAUDE_SKILLS_DIR/stania" ]; then
         if [ "$DRY_RUN" = true ]; then
-            echo -e "  ${YELLOW}[dry-run]${NC} Would remove skill: forja"
+            echo -e "  ${YELLOW}[dry-run]${NC} Would remove skill: stania"
         else
-            rm -rf "$CLAUDE_SKILLS_DIR/forja"
-            echo -e "  ${RED}-${NC}  Removed: skill forja"
+            rm -rf "$CLAUDE_SKILLS_DIR/stania"
+            echo -e "  ${RED}-${NC}  Removed: skill stania"
         fi
     fi
 
     echo ""
-    echo -e "  ${GREEN}Forja uninstalled.${NC} ($REMOVED commands removed)"
+    echo -e "  ${GREEN}Stania uninstalled.${NC} ($REMOVED commands removed)"
     echo ""
     exit 0
 fi
@@ -127,7 +127,7 @@ NEW=0
 UPDATED=0
 UNCHANGED=0
 
-for cmd in "$FORJA_DIR/commands/"*.md; do
+for cmd in "$STANIA_DIR/commands/"*.md; do
     [ -f "$cmd" ] || continue
     filename=$(basename "$cmd")
     name=$(basename "$filename" .md)
@@ -157,16 +157,16 @@ done
 
 # --- Install Skill ---
 
-if [ "$MINIMAL" = false ] && [ -d "$FORJA_DIR/skills/forja" ]; then
+if [ "$MINIMAL" = false ] && [ -d "$STANIA_DIR/skills/stania" ]; then
     echo ""
     echo -e "  ${BOLD}Installing skill...${NC}"
 
     if [ "$DRY_RUN" = true ]; then
-        echo -e "  ${YELLOW}[dry-run]${NC} Would install skill: forja"
+        echo -e "  ${YELLOW}[dry-run]${NC} Would install skill: stania"
     else
-        mkdir -p "$CLAUDE_SKILLS_DIR/forja"
-        cp "$FORJA_DIR/skills/forja/SKILL.md" "$CLAUDE_SKILLS_DIR/forja/SKILL.md"
-        echo -e "  ${GREEN}+${NC}  Installed: skill forja"
+        mkdir -p "$CLAUDE_SKILLS_DIR/stania"
+        cp "$STANIA_DIR/skills/stania/SKILL.md" "$CLAUDE_SKILLS_DIR/stania/SKILL.md"
+        echo -e "  ${GREEN}+${NC}  Installed: skill stania"
     fi
 fi
 
@@ -176,17 +176,18 @@ echo ""
 echo -e "  ${BOLD}${GREEN}Done.${NC} ${NEW} new, ${UPDATED} updated, ${UNCHANGED} unchanged"
 echo ""
 echo -e "  ${BOLD}Pipeline commands:${NC}"
-echo -e "    ${GREEN}/bootstrap${NC}  From idea to configured project"
-echo -e "    ${GREEN}/spec${NC}       Write spec before coding"
-echo -e "    ${GREEN}/build${NC}      Controlled generation (domain first)"
+echo -e "    ${GREEN}/bootstrap${NC}  From idea to configured project + .stania/ init"
+echo -e "    ${GREEN}/spec${NC}       Write spec before coding (saved to .stania/specs/)"
+echo -e "    ${GREEN}/build${NC}      Controlled generation (domain first, progress tracked)"
 echo -e "    ${GREEN}/check${NC}      Validate + harden + AI code smells"
 echo -e "    ${GREEN}/ship${NC}       Pre-deploy audit + PR"
 echo -e "    ${GREEN}/retro${NC}      Session close + capture decisions"
 echo ""
 echo -e "  ${BOLD}Extra:${NC}"
 echo -e "    ${BLUE}/mutate${NC}     Mutation testing (on demand)"
-echo -e "    ${BLUE}/model${NC}      Extract DDD domain model"
-echo -e "    ${BLUE}/status${NC}     Implementation progress"
+echo -e "    ${BLUE}/model${NC}      Extract DDD domain model → .stania/domain-model.json"
+echo -e "    ${BLUE}/status${NC}     Implementation progress (reads .stania/progress.json)"
 echo ""
+echo -e "  ${DIM}State: .stania/ in each project (cross-session continuity)${NC}"
 echo -e "  ${DIM}Docs: ${REPO_URL}${NC}"
 echo ""

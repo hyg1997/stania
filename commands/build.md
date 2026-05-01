@@ -1,62 +1,86 @@
-Loop completo de generacion controlada. Etapas 2-3 del pipeline.
-Requiere que /spec ya se haya corrido y el usuario haya aprobado.
+Generacion controlada capa por capa. Etapa 2 del pipeline.
+Requiere spec aprobada. Actualiza `.stania/progress.json` al completar cada capa.
 
 ## Pre-requisito
 
-Si no hay spec aprobada para esta feature, decir:
-"Necesito la spec primero. Corro /spec?"
-No generar codigo sin spec aprobada (excepto fixes triviales).
+Verificar:
+1. Existe spec aprobada? Buscar en `.stania/specs/` o preguntar: "Corro /spec primero?"
+2. Leer `.stania/config.json` para stack y arquitectura
+3. Leer `.stania/domain-model.json` para contexto del dominio
+4. Leer la spec relevante
+
+Si no hay spec y la tarea es trivial (fix, config): proceder sin spec.
+Si toca domain: spec obligatoria.
 
 ## Loop de generacion
 
-### Fase A: Domain Layer (si aplica)
+### Fase A: Domain Layer
 
-Generar en este orden exacto:
+Generar en este orden:
 1. Value Objects (inmutables, auto-validantes, constructor privado + factory)
 2. Entity / Aggregate Root (constructor privado + factory, invariantes en metodos)
-3. Domain Events (records/clases inmutables)
+3. Domain Events (records inmutables)
 4. Port interfaces (output ports para infrastructure)
 5. Tests de dominio para cada pieza
 
 Reglas de domain:
 - Zero imports de infrastructure, framework, o librerias externas
-- Constructor privado + static factory method (Create, From, etc)
+- Constructor privado + static factory method
 - Invariantes validados DENTRO del aggregate, no en el handler
 - Result pattern para operaciones que pueden fallar
 - Cada metodo publico tiene al menos un test
 
-Presentar codigo al usuario. Esperar aprobacion antes de Fase B.
+Presentar al usuario. Esperar aprobacion.
+
+Al aprobar, actualizar `.stania/progress.json`:
+```json
+{ "status": "in-progress", "layers": { "domain": true, "tests": true } }
+```
 
 ### Fase B: Application Layer
 
-1. Command/Query record/class con campos tipados
+1. Command/Query con campos tipados
 2. Handler que orquesta: recibe command → llama domain → llama ports
 3. DTOs para response (separados de domain entities)
-4. Tests de handler con in-memory fakes de los ports
+4. Tests de handler con in-memory fakes
 
-Reglas de application:
+Reglas:
 - Sin logica de negocio — eso va en domain
 - Handler recibe dependencias via constructor (ports)
-- Retorna Result<DTO, Error>, nunca lanza excepciones para flujos de negocio
-- Fakes en tests, no mocks (implementar la interface con Map/Array en memoria)
+- Result<DTO, Error>, no excepciones para flujos de negocio
+- Fakes en tests, no mocks (implementar interface con Map/Array en memoria)
 
-Presentar al usuario. Esperar aprobacion antes de Fase C.
+Presentar al usuario. Esperar aprobacion.
+
+Al aprobar:
+```json
+{ "layers": { "domain": true, "application": true, "tests": true } }
+```
 
 ### Fase C: Infrastructure Layer
 
-1. Adapters que implementan los port interfaces
-2. Configuracion de DI (registrar adapter → port)
-3. Tests de integracion (solo si hay I/O real: DB, API externa)
+1. Adapters que implementan port interfaces
+2. Configuracion de DI
+3. Tests de integracion (solo si hay I/O real)
 
-Reglas de infrastructure:
-- Implementa exactamente la interface del port, nada mas
-- Manejo de errores de I/O: capturar y mapear a domain errors
-- No exponer detalles de infra al domain (no SqlException en domain)
+Reglas:
+- Implementa exactamente la interface del port
+- Capturar errores de I/O y mapear a domain errors
+- No exponer detalles de infra al domain
+
+Al aprobar:
+```json
+{
+  "status": "done",
+  "layers": { "domain": true, "application": true, "infrastructure": true, "tests": true },
+  "lastBuild": "[ISO8601]"
+}
+```
 
 ### Fase D: Wiring
 
-1. Registrar en el contenedor de DI / modulo
-2. Exponer via API endpoint si es necesario (controller/route)
+1. Registrar en contenedor de DI / modulo
+2. Exponer via API endpoint si necesario
 3. Verificar que todo compila y tests pasan
 
 ## Post-generacion
@@ -66,9 +90,24 @@ Correr automaticamente:
 2. Lint (biome / ruff)
 3. Tests (vitest / pytest)
 
-Si algo falla → arreglar antes de reportar al usuario.
+Si algo falla → arreglar antes de reportar.
 
 Reportar:
 - Archivos creados/modificados
 - Tests: X passing, 0 failing
 - "Listo para /check o commit"
+
+## Sin modelo DDD
+
+Si `config.architecture !== "clean"`:
+- Saltar separacion en capas
+- Generar codigo segun la spec
+- Correr tests y validacion
+- Actualizar progress.json
+
+## Reglas de estado
+
+- Si `.stania/` no existe, generar codigo sin tracking
+- Nunca bloquear por falta de estado — el estado facilita, no restringe
+- Si el usuario interrumpe entre fases, el progress refleja hasta donde llego
+- En la siguiente sesion, /status mostrara que capa falta

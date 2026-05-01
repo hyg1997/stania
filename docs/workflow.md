@@ -1,6 +1,6 @@
-# Forja — Workflow Reference
+# Stania — Workflow Reference
 
-Complete reference for the Forja engineering pipeline.
+Complete reference for the Stania engineering pipeline.
 For quick command usage, see the [README](../README.md).
 
 ## Daily Workflow
@@ -8,13 +8,13 @@ For quick command usage, see the [README](../README.md).
 ```
 1. Start session
    → Read CLAUDE.md (automatic)
-   → /status to see where you left off
+   → /status to see where you left off (reads .stania/progress.json)
 
 2. Pick next aggregate/feature
-   → /spec to define it formally
+   → /spec to define it formally (saved to .stania/specs/)
 
 3. Generate code
-   → /build (layer by layer, with approval gates)
+   → /build (layer by layer, with approval gates, progress tracked)
 
 4. Validate
    → /check (automated pipeline + AI code smell scan)
@@ -24,204 +24,137 @@ For quick command usage, see the [README](../README.md).
    → /ship (full audit + PR creation)
 
 6. Close session
-   → /retro (capture decisions, update docs)
+   → /retro (capture decisions, update docs, save session summary)
 ```
+
+## State Management
+
+Stania tracks state in `.stania/` — no external runtime needed.
+Claude Code reads/writes JSON directly.
+
+### Files
+
+| File | Purpose | Git |
+|------|---------|-----|
+| `config.json` | Stack, architecture, thresholds | Committed |
+| `domain-model.json` | Bounded contexts, aggregates, events | Committed |
+| `progress.json` | Per-aggregate layer completion | Gitignored |
+| `specs/*.md` | Approved feature specs | Gitignored |
+
+### Design rules
+
+1. **Advisory, not blocking**: If state is missing or corrupted, commands fall back to filesystem scanning.
+2. **Read-merge-write**: Always read current state, merge changes, then write. Never overwrite blindly.
+3. **Human-readable**: Users can inspect and manually edit JSON if needed.
+4. **Graceful degradation**: No `.stania/`? Commands still work — just without cross-session tracking.
 
 ## Stage Details
 
 ### Stage 0: /bootstrap
 
-**When**: Starting a new project from scratch, or joining a project that lacks structure.
+**When**: Starting a new project or joining one that lacks structure.
 
 **What it does**:
-1. Diagnoses the current state (git, package manager, tooling, docs)
-2. Gathers project context from user
-3. Creates/updates: git repo, CLAUDE.md, docs/, monorepo structure, quality tooling (typecheck, lint, test, pre-commit hooks)
-4. Verifies everything works (build, lint, test pass)
-5. Makes initial commit
-6. Reports what was created
+1. Diagnoses current state (git, tooling, docs)
+2. Gathers project context
+3. Creates `.stania/config.json` and `.stania/progress.json`
+4. Sets up: git, CLAUDE.md, docs/, monorepo, quality tooling, pre-commit hooks
+5. Verifies everything works
+6. Makes initial commit
 
-**Key rule**: Never assumes a stack — detects from existing files or asks.
+**State created**: `config.json`, `progress.json` (empty)
 
 ### Stage 1: /spec
 
-**When**: Before generating ANY code for a feature or aggregate.
+**When**: Before generating ANY code for a feature.
 
-**What it produces**:
-```
-=== SPEC: [Feature Name] ===
+**What it produces**: Formal spec with invariants, errors, edge cases, critical tests.
 
-Bounded Context: [name]
-Affected Layers: Domain / Application / Infrastructure
-
-Input:  [type definition]
-Output: [type definition]
-
-Invariants:
-  1. [rule that NEVER breaks]
-  2. ...
-
-Errors:
-  - [ErrorName]: when [condition]
-  - ...
-
-Edge Cases:
-  - [scenario including concurrency]
-  - ...
-
-Critical Test Cases:
-  - [test: input → expected output]
-  - ...
-```
-
-**Key rule**: Do NOT generate code until the user approves the spec.
+**State**: Reads `domain-model.json` for context. Saves approved spec to `.stania/specs/{slug}.md`. Updates `progress.json` with specPath.
 
 ### Stage 2: /build
 
 **When**: After spec is approved.
 
 **Generation order** (strict):
-1. **Domain layer** — Value Objects → Aggregate → Domain Events → Port interfaces
-2. **Application layer** — Command/Query → Handler → DTOs
-3. **Infrastructure layer** — Repository adapters → External service adapters → DI wiring
-4. **Wiring** — Routes/controllers, module registration
+1. **Domain** — Value Objects → Aggregate → Events → Ports
+2. **Application** — Command/Query → Handler → DTOs
+3. **Infrastructure** — Adapters → DI wiring
+4. Each layer gets tests before moving to next
+5. Each layer requires user approval
 
-**Rules**:
-- Each layer gets unit tests before moving to the next
-- Each layer requires user approval before advancing
-- Domain has ZERO external imports
-- Tests are generated alongside code, never after
+**State**: Updates `progress.json` layers after each phase. Marks status "in-progress" → "done".
 
 ### Stage 3: /check
 
-**When**: After /build completes, or any time you want to validate current state.
+**When**: After /build, or any time you want to validate.
 
-**Phase 1 — Automated validation**:
-- Typecheck (tsc --noEmit / mypy --strict)
-- Lint (biome check / ruff check)
-- Tests (vitest run / pytest)
-- Format check
+**Phase 1 — Automated validation**: typecheck, lint, tests, format
+**Phase 2 — Hardening**: architecture enforcement, 8 AI code smells, security scan
 
-**Phase 2 — Hardening**:
-- Architecture enforcement: no domain → infrastructure imports
-- 8 AI code smell checks (see below)
-- Security scan: secrets in code, dependency audit
-- Test quality: coverage, assertion density
-
-**Output**: PASS / WARN / FAIL verdict with specific findings.
+**Output**: PASS / WARN / FAIL verdict.
+**State**: Updates `progress.json` lastCheck timestamp.
 
 ### Stage 4: /ship
 
-**When**: Feature is complete and /check passes.
+**When**: Feature complete and /check passes.
 
-**Checklist**:
-1. Clean working tree (no uncommitted changes)
-2. Full /check pipeline (stricter thresholds)
-3. Test coverage report
-4. Mutation testing results (if configured)
-5. Manual checklist: docs updated? Breaking changes? Migration needed?
-6. PR creation with structured body
-
-**PR body format**:
-```markdown
-## What
-[one-line summary]
-
-## Why
-[business context]
-
-## How
-[technical approach]
-
-## Testing
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Manual testing done
-
-## Checklist
-- [ ] Types pass strict mode
-- [ ] No lint warnings
-- [ ] Docs updated
-- [ ] No secrets in code
-```
+**Checklist**: repo state, full pipeline (strict), coverage, mutation testing, manual checklist, PR creation.
 
 ### Stage 5: /retro
 
 **When**: End of work session.
 
-**What it does**:
-1. Summarizes git log since last retro
-2. Identifies architectural decisions worth recording
-3. Creates ADRs (Architecture Decision Records) if needed
-4. Updates CLAUDE.md or docs/ if anything changed
-5. Suggests where to start next session
+**What it does**: Summarize session, create ADRs, update docs, suggest next steps.
+**State**: Saves `lastSession` to `progress.json`.
 
 ## AI Code Smells — Detailed
 
 ### 1. API Hallucination
-AI invents methods, parameters, or return types that don't exist in the actual library.
-
-**Detection**: Check every external API call against actual library docs/types.
-**Example**: `prisma.user.findByEmail()` — Prisma has no `findByEmail`, it's `findUnique({ where: { email } })`.
+AI invents methods that don't exist in the library.
+**Detection**: Check every external API call against actual types.
 
 ### 2. Happy Path Bias
-AI writes code that only handles the success case. No error handling, no edge cases, no timeouts.
-
-**Detection**: Look for missing try/catch, unchecked nulls, no timeout on external calls, no retry logic.
-**Example**: `const user = await db.findUser(id)` followed by `user.name` with no null check.
+Only handles success. No error handling, no timeouts.
+**Detection**: Missing try/catch, unchecked nulls, no retry logic.
 
 ### 3. Invisible Coupling
-Domain layer imports from infrastructure. Business logic depends on framework specifics.
-
-**Detection**: Check import paths in domain files. Domain should have zero external deps.
-**Example**: `import { PrismaClient } from '@prisma/client'` in a domain service.
+Domain imports from infrastructure.
+**Detection**: Check import paths in domain files.
 
 ### 4. Security Blindness
-Unsanitized user input, PII in logs, secrets in code, missing auth checks.
-
-**Detection**: Trace user input from entry point to usage. Check log statements for PII. Grep for hardcoded secrets.
-**Example**: `console.log('User login:', { email, password })` — password in logs.
+Unsanitized input, PII in logs, secrets in code.
+**Detection**: Trace user input from entry to usage. Check logs for PII.
 
 ### 5. Over-engineering
-Premature abstractions, unnecessary design patterns, building for requirements that don't exist.
-
-**Detection**: Ask "would removing this abstraction break anything?" If no, it's over-engineering.
-**Example**: Factory pattern for a class that has exactly one implementation.
+Premature abstractions for requirements that don't exist.
+**Detection**: "Would removing this abstraction break anything?"
 
 ### 6. Test Theater
-Tests that pass but verify nothing meaningful. Mocking everything. Testing implementation instead of behavior.
-
-**Detection**: Check assertion count and quality. Tests with zero assertions. Tests that only check `toBeDefined()`.
-**Example**: `expect(service).toBeDefined()` — this tests that JavaScript works, not your code.
+Tests pass but verify nothing. Mocking everything.
+**Detection**: Check assertion count. Tests with only `toBeDefined()`.
 
 ### 7. Context Amnesia
-AI writes inconsistent patterns across files. Different error handling strategies, naming conventions, or architectural patterns in the same project.
-
-**Detection**: Compare patterns across modules. Same problem solved differently in two places.
-**Example**: Module A uses Result pattern, Module B throws exceptions for the same kind of error.
+Inconsistent patterns across files.
+**Detection**: Same problem solved differently in two places.
 
 ### 8. Stale Patterns
-AI uses deprecated APIs, old library versions, or outdated approaches from its training data.
+Deprecated APIs, outdated approaches.
+**Detection**: Check for deprecation warnings.
 
-**Detection**: Check for deprecation warnings. Verify API calls against current docs.
-**Example**: Using `componentWillMount` in React (deprecated since React 16.3).
-
-## Review Tiers — When to Use Each
+## Review Tiers
 
 ### T1 Auto
-**Scope**: UI changes, config files, cosmetic fixes, dependency bumps.
-**Process**: /check passes → commit directly.
-**Rationale**: Low risk, high confidence from automated checks.
+**Scope**: UI, config, cosmetic, dep bumps.
+**Process**: /check passes → commit.
 
 ### T2 Light
-**Scope**: New features, handlers, API endpoints, new adapters.
-**Process**: /check + quick manual review of contracts and interfaces.
-**Rationale**: Medium risk, need to verify contracts are correct.
+**Scope**: New features, handlers, endpoints.
+**Process**: /check + quick review of contracts.
 
 ### T3 Deep
-**Scope**: Domain logic, security-related code, billing/payment, data migrations.
-**Process**: Full /check + /mutate + manual review of every line.
-**Rationale**: High risk, bugs here cost real money or compromise security.
+**Scope**: Domain logic, security, billing, migrations.
+**Process**: /check + /mutate + manual review.
 
 ## Clean Architecture Quick Reference
 
@@ -233,7 +166,6 @@ AI uses deprecated APIs, old library versions, or outdated approaches from its t
 │              Application                │
 │    (Use Cases, Command/Query Handlers)  │
 │         Orchestration only.             │
-│       No business logic here.           │
 ├─────────────────────────────────────────┤
 │               Domain                    │
 │  (Entities, Value Objects, Aggregates,  │
@@ -243,18 +175,17 @@ AI uses deprecated APIs, old library versions, or outdated approaches from its t
 │            Infrastructure               │
 │   (Repositories, External Services,     │
 │    Framework adapters, DI container)     │
-│     Implements domain ports.            │
 └─────────────────────────────────────────┘
 
 Dependencies flow INWARD only.
-Domain depends on nothing. Everything depends on domain.
+Domain depends on nothing.
 ```
 
 ### Rules
 - Private constructors + factory methods on aggregates
-- Result pattern for fallible operations (no exceptions for business flows)
-- Value Objects over primitives (`Email` not `string`, `Money` not `number`)
-- Port interfaces defined in domain, implemented in infrastructure
+- Result pattern for fallible operations
+- Value Objects over primitives
+- Port interfaces in domain, implementations in infrastructure
 - One aggregate per transaction boundary
 
 ## Test Distribution
@@ -268,13 +199,7 @@ Domain depends on nothing. Everything depends on domain.
 
 ## Mutation Testing
 
-**What**: Automatically modify your code (mutants) and check if tests catch the changes. If a mutant survives, your tests have a gap.
-
-**When**: /mutate on demand, or automatically during /ship for T3 reviews.
-
+**What**: Modify code automatically and check if tests catch it.
+**When**: /mutate on demand, or during /ship for T3 reviews.
 **Target**: >80% kill rate on domain logic.
-
-**Tools**:
-- TypeScript: Stryker (`npx stryker run`)
-- Python: mutmut (`mutmut run`)
-- Go: go-mutesting
+**Tools**: Stryker (TS), mutmut (Python), go-mutesting (Go)
