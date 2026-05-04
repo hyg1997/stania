@@ -1,187 +1,185 @@
-# Stania
+<p align="center">
+  <img src="https://img.shields.io/npm/v/stania?style=flat-square&color=000" alt="npm version" />
+  <img src="https://img.shields.io/npm/dm/stania?style=flat-square&color=000" alt="downloads" />
+  <img src="https://img.shields.io/github/license/cloudpetals/stania?style=flat-square&color=000" alt="license" />
+</p>
 
-**AI engineering workflow for Claude Code. Ship production software with a 2-person team.**
+<h1 align="center">Stania</h1>
 
-Stania turns Claude Code into a disciplined engineering system: contract-first parallel development, autonomous agents for backend, structured specs for frontend, and a pipeline that catches AI mistakes before they hit production.
+<p align="center">
+  Ship production software with AI agents.<br/>
+  Contract-first. Parallel by default. Role-aware.
+</p>
 
-## Who is this for
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="docs/workflow.md">Docs</a> ·
+  <a href="docs/frontend-guide.md">Frontend Guide</a> ·
+  <a href="#commands">Commands</a>
+</p>
 
-- Small teams (2-3 engineers + frontend interns) building SaaS products
-- Teams using Claude Code Max that want predictable, high-quality output
-- Anyone tired of "vibe coding" producing fragile, untested code
+---
 
-## How it works
-
-```
-Tech Lead                    Frontend                  Agent (background)
-─────────                    ────────                  ──────────────────
-/st-bootstrap                                         
-/st-model                                             
-     │                                                
-/st-contract ──────────────→ writes UI spec           
-/st-agent ─────────────────────────────────────────→ implements backend
-     │                       /st-ui (generates code)  
-     │                       /st-ui --refine          
-     │                            │                        │
-review PR ←─────────────────────────────────────────── creates PR
-/st-integrate                adjusts in Storybook     
-/st-contract (next) ───────→ next spec                
-```
-
-**Frontend and backend never block each other.** The contract (types + mocks) is the interface.
-
-## Install
+Stania is an engineering workflow for [Claude Code](https://claude.ai/code). It replaces vibe coding with a disciplined system: define contracts, let agents build the backend, let frontends write specs instead of code, and ship through a pipeline that catches AI mistakes before production.
 
 ```bash
 npx stania
 ```
 
-Installs commands and skill to `.claude/` in your current project. Per-project only — doesn't pollute other projects.
+## Why Stania
 
-```bash
-npx stania@latest     # Update to latest
-npx stania uninstall  # Remove from project
-```
-
-Or via curl:
-```bash
-curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
-```
+| Without Stania | With Stania |
+|----------------|-------------|
+| "Build me a booking system" → fragile code, no tests, inconsistent patterns | Contract → Agent → Tested PR in minutes |
+| Frontend blocked waiting for backend | Frontend works on mocks from day 1 |
+| Manual review of every AI-generated line | 8 AI code smell detectors + mutation testing |
+| "Where did we leave off?" between sessions | `.stania/` tracks progress, domain model, specs |
+| Everyone needs to know everything | Role-aware: each person sees only what's relevant |
 
 ## Quick Start
 
 ```bash
-mkdir my-project && cd my-project
-npx stania                      # Install Stania
-# Open Claude Code, then:
-/st-bootstrap                   # Creates repo, CI/CD, monorepo, .stania/
-/st-model                       # Define domain model
-/st-contract create-user        # First API contract → mocks + types + client
-/st-agent create-user           # Agent builds backend autonomously
-# Meanwhile, frontend writes spec → /st-ui generates component
+mkdir my-app && cd my-app
+npx stania
 ```
+
+Open Claude Code:
+
+```
+/st-next                        → "Run /st-bootstrap to initialize"
+/st-bootstrap                   → repo, CI/CD, monorepo, deploy
+/st-model                       → domain model
+/st-contract create-user        → API types + mocks + client
+/st-agent create-user           → autonomous backend (background)
+```
+
+Frontend (simultaneously):
+
+```
+/st-next                        → "UI spec 'signup-form' ready: /st-ui signup-form"
+/st-ui signup-form              → generates component from spec
+/st-ui --refine signup-form     → "add hover shadow, fade-in animation"
+```
+
+## How It Works
+
+```
+ YOU (Tech Lead)              FRONTEND                    AGENT (background)
+ ───────────────              ────────                    ──────────────────
+ /st-contract ─────────────→  writes UI spec
+ /st-agent ───────────────────────────────────────────→  implements backend
+                              /st-ui (generates code)
+                              /st-ui --refine (styles)         │
+                                   │                           │
+ review PR  ←──────────────────────────────────────────── creates PR
+ /st-integrate                done                        
+```
+
+**Frontend and backend never block each other.** The contract is the interface.
+
+## Install
+
+```bash
+npx stania            # Install in current project
+npx stania@latest     # Update to latest
+npx stania uninstall  # Remove
+```
+
+Per-project only. Doesn't pollute other projects or waste tokens globally.
+
+<details>
+<summary>Alternative: curl</summary>
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
+```
+</details>
 
 ## Commands
 
-### Team Workflow (contract-first)
+### Guidance
 
-| Command | Who | What |
-|---------|-----|------|
-| `/st-bootstrap` | Tech Lead | Project setup: GitHub repo, CI/CD, monorepo, deploy |
-| `/st-contract` | Tech Lead | Define API contract → generates mocks + ports + client |
-| `/st-agent` | Tech Lead | Launch autonomous backend implementation (background) |
-| `/st-ui` | Frontend | Generate component from structured UI spec |
-| `/st-ui --refine` | Frontend | Adjust styles/effects in natural language |
-| `/st-board` | PM/Lead | GitHub Issues/PRs status board |
-| `/st-integrate` | Tech Lead | Replace mocks with real backend + e2e tests |
+| Command | Description |
+|---------|-------------|
+| `/st-next` | **What should I do now?** Role-aware, reads project state, suggests 1-3 actions |
 
-### Engineering Pipeline (solo mode)
+### Team Workflow
 
-| Command | Stage | What |
-|---------|-------|------|
-| `/st-quick` | — | Fast path: validate → commit (T1/T2 changes) |
-| `/st-spec` | 1 | Formal spec with invariants and edge cases |
-| `/st-build` | 2 | Layer-by-layer generation (domain → app → infra) |
-| `/st-check` | 3 | Parallel validation (typecheck + lint + tests) + AI smell scan |
-| `/st-ship` | 4 | Pre-deploy audit + PR creation |
-| `/st-retro` | 5 | Session close: decisions, docs, next steps |
+| Command | Description |
+|---------|-------------|
+| `/st-bootstrap` | Project setup — GitHub repo, CI/CD, monorepo, Vercel + Cloud Run |
+| `/st-contract` | Define API contract → generates mocks, typed client, backend ports |
+| `/st-agent` | Launch autonomous backend implementation in background |
+| `/st-ui` | Generate frontend component from structured spec |
+| `/st-ui --refine` | Adjust styles/effects in natural language |
+| `/st-integrate` | Replace mocks with real backend + run e2e |
+| `/st-board` | GitHub Issues/PRs kanban board |
+
+### Quality
+
+| Command | Description |
+|---------|-------------|
+| `/st-check` | Parallel validation — typecheck + lint + tests + AI smell scan |
+| `/st-e2e` | Generate Playwright E2E tests from contracts |
+| `/st-migrate` | Handle contract evolution — detect breaking changes, update dependents |
+| `/st-seed` | Generate realistic test fixtures (builder pattern) |
+| `/st-deps` | Dependency health — security audit + auto-fix |
+| `/st-mutate` | Mutation testing — are your tests actually catching bugs? |
+
+### Pipeline
+
+| Command | Description |
+|---------|-------------|
+| `/st-quick` | Fast path — validate + commit (for simple changes) |
+| `/st-spec` | Formal spec with invariants, errors, edge cases |
+| `/st-build` | Layer-by-layer generation — domain → app → infra |
+| `/st-ship` | Pre-deploy audit + PR creation |
+| `/st-retro` | Session close — decisions, docs, next steps |
 
 ### Utilities
 
-| Command | What |
-|---------|------|
+| Command | Description |
+|---------|-------------|
 | `/st-model` | Extract DDD domain model → `.stania/domain-model.json` |
-| `/st-mutate` | Mutation testing (are your tests actually catching bugs?) |
-| `/st-status` | Progress report from `.stania/progress.json` |
+| `/st-status` | Progress report per bounded context |
 
 ## Frontend Workflow
 
-The frontend person **never writes component code**. They write a structured spec and Claude generates everything.
+The frontend person **writes specs, not code.** Claude generates everything.
 
-### 1. Copy template
+**1. Pick a layout** from the catalog (9 options):
 
-```bash
-cp .stania/ui-specs/_TEMPLATE.md .stania/ui-specs/my-component.md
-```
+> `LIST` · `DETAIL` · `FORM` · `DASHBOARD` · `GRID` · `SIDEBAR` · `MODAL` · `SPLIT` · `EMPTY`
 
-### 2. Fill the spec
+**2. Fill the spec** (what it shows, what users can do, what happens on error):
 
 ```markdown
 # Order List
 
-## Meta
-- **Type**: page
-- **Route**: /orders
-- **Contract**: list-orders
-- **Priority**: P0
-
 ## Layout
-**Layout**: LIST    ← pick from catalog (LIST, DETAIL, FORM, DASHBOARD, GRID, SIDEBAR, MODAL, SPLIT)
-
+**Layout**: LIST
 **Slots**:
-  - header: "Orders" + date filter + export button
-  - filters: status (all/pending/confirmed/cancelled)
-  - item-row: order card with guest name, date, party size, status badge
+  - header: "Orders" + date filter
+  - item-row: guest name, date, party size, status badge
   - pagination: infinite scroll
 
 ## States
-| State | UI |
-|-------|-----|
 | loading | 5 skeleton rows |
-| empty | "No orders yet" + CTA to create |
-| error | "Failed to load" + retry |
-| success | order list |
+| empty   | "No orders yet" + create CTA |
+| error   | "Failed to load" + retry |
 
 ## Interactions
-| Trigger | Action | Result |
-|---------|--------|--------|
-| click order | navigate | /orders/:id |
-| change filter | refetch | filtered list |
-| scroll bottom | load more | append orders |
+| click row    | navigate to /orders/:id |
+| change filter | refetch with new params |
 ```
 
-### 3. Generate
+**3. Generate:** `/st-ui order-list`
 
-```
-/st-ui order-list
-```
+**4. Adjust:** `/st-ui --refine order-list` → "more shadow on hover, fade-in animation"
 
-Claude reads your spec + `ui-standards.md` + `layout-catalog.md` + contract types, and generates:
-- Server + Client components (proper RSC split)
-- TanStack Query hooks with contract types
-- Loading skeletons matching layout dimensions
-- Tests with accessibility assertions (axe-core)
-- Mobile-first responsive from layout catalog
-
-### 4. Refine visually
-
-```
-/st-ui --refine order-list
-```
-
-> "More shadow on hover, fade-in animation when items load, status badges with colored backgrounds"
-
-Claude edits only Tailwind classes. No architecture changes.
-
-## Layout Catalog
-
-Pre-defined layouts in `.stania/layout-catalog.md`. Each has slots, responsive behavior, and component structure:
-
-| Layout | Use for |
-|--------|---------|
-| **LIST** | Tables, feeds, search results |
-| **DETAIL** | Single resource view with tabs |
-| **FORM** | Single or multi-step forms |
-| **DASHBOARD** | KPIs, charts, metrics overview |
-| **GRID** | Card grids (products, gallery, team) |
-| **SIDEBAR** | Settings, admin, docs navigation |
-| **MODAL** | Confirmations, quick-create, previews |
-| **SPLIT** | Chat, master-detail, comparisons |
-| **EMPTY** | Zero-data states, onboarding |
+> Full guide: [docs/frontend-guide.md](docs/frontend-guide.md)
 
 ## Architecture
-
-### Project Structure (monorepo)
 
 ```
 project/
@@ -189,94 +187,123 @@ project/
 │   ├── web/                  ← Next.js 15 (Vercel)
 │   └── api/                  ← Backend (Cloud Run)
 ├── packages/
-│   └── contracts/            ← Source of truth (shared types + mocks)
-│       ├── create-order.ts
-│       └── generated/
-│           ├── mocks/        ← MSW handlers (frontend uses these)
-│           ├── client/       ← Typed API client
-│           └── ports/        ← Backend interfaces
-├── .stania/
-│   ├── config.json
-│   ├── domain-model.json
-│   ├── ui-standards.md
-│   ├── layout-catalog.md
-│   └── ui-specs/
-└── .github/workflows/
+│   └── contracts/            ← Source of truth
+│       └── generated/        ← mocks + client + ports (auto-generated)
+└── .stania/                  ← State tracking + UI specs
 ```
 
-### Frontend Architecture (enforced by ui-standards.md)
+<details>
+<summary>Frontend standards (enforced automatically)</summary>
 
-- **Server Components by default** — `"use client"` only for interactivity
-- **Feature-based folders** — component + hook + test colocated
-- **TanStack Query** for client data fetching
-- **React Hook Form + Zod** for forms
-- **shadcn/ui** as component library
-- **Tailwind CSS** mobile-first
-- **axe-core** in every test (accessibility)
-- **4 states mandatory**: loading, empty, error, success
+- Server Components by default — `"use client"` only for interactivity
+- Feature-based folders — component + hook + test colocated
+- TanStack Query for data fetching
+- React Hook Form + Zod for forms
+- shadcn/ui + Tailwind CSS (mobile-first)
+- axe-core accessibility in every test
+- 4 states mandatory: loading, empty, error, success
+- Lighthouse CI: Performance ≥90, Accessibility ≥95
 
-### Backend Architecture (Clean Architecture + DDD)
+</details>
 
-- **Domain**: Zero external imports, private constructors, Result pattern
-- **Application**: Use cases, command/query handlers
-- **Infrastructure**: Adapters, repositories, framework wiring
-- **Ports in domain**, implementations in infrastructure
+<details>
+<summary>Backend standards (Clean Architecture + DDD)</summary>
+
+- Domain: zero external imports, private constructors, Result pattern
+- Value Objects over primitives (Email not string, Money not number)
+- Ports in domain, implementations in infrastructure
+- One aggregate per transaction boundary
+
+</details>
 
 ## Quality Gates
 
-### In development (/st-check)
-- TypeScript strict (no `any`, no unchecked index)
-- Biome lint + format
-- Vitest tests with axe-core accessibility
-- AI code smell scan (8 patterns)
+```
+Development          CI (every PR)              On demand
+───────────          ─────────────              ─────────
+/st-check            GitHub Actions             /st-mutate
+├─ TypeScript        ├─ typecheck + lint        └─ mutation testing
+├─ Biome             ├─ tests                      (>80% kill rate)
+├─ Vitest + axe      ├─ Lighthouse CI
+└─ AI smell scan     └─ bundle budget (<100KB)
+```
 
-### In CI (GitHub Actions)
-- All of the above +
-- Lighthouse CI: Performance ≥90, Accessibility ≥95, Best Practices ≥90
-- Bundle size budget: <100KB JS first-load per route
+## AI Code Smells
 
-### On demand (/st-mutate)
-- Mutation testing: >80% kill rate on domain logic
+Stania detects 8 patterns that AI commonly produces:
+
+| # | Smell | What it catches |
+|---|-------|-----------------|
+| 1 | API Hallucination | Methods that don't exist in the library |
+| 2 | Happy Path Bias | Missing error handling |
+| 3 | Invisible Coupling | Domain importing from infrastructure |
+| 4 | Security Blindness | Unsanitized input, PII in logs |
+| 5 | Over-engineering | Abstractions for non-existent requirements |
+| 6 | Test Theater | Tests that verify nothing meaningful |
+| 7 | Context Amnesia | Same problem solved differently across files |
+| 8 | Stale Patterns | Using deprecated approaches |
+
+## Role System
+
+Stania adapts to who you are:
+
+| Role | Sees | Focus |
+|------|------|-------|
+| **lead** | All commands | Contracts, architecture, PR reviews |
+| **frontend** | /st-ui, /st-next, /st-ui --refine | Specs and visual adjustments |
+| **pm** | /st-board, /st-next, /st-status | Progress and blockers |
+
+Set on first run: `/st-next` → "What's your role?" → saved to `.stania/me.json`
 
 ## Token Efficiency
 
-Stania is designed to minimize Claude Code token consumption:
-
-1. **Per-project install** — skill only loads in this project (~1,100 tokens vs 0 in others)
-2. **Output truncation** — all tool output piped through `| tail -N`
-3. **Parallel validation** — typecheck + lint + tests as 3 simultaneous calls
-4. **Incremental /st-ship** — skips re-validation if lastCheck < 10 minutes
-5. **Lazy loading** — only reads the specific aggregate/spec needed
-6. **No duplicate validation** — /st-build only typechecks, /st-check owns full validation
-
-## AI Code Smells (checked by /st-check)
-
-1. **API Hallucination** — invented methods that don't exist
-2. **Happy Path Bias** — no error handling
-3. **Invisible Coupling** — domain depends on infrastructure
-4. **Security Blindness** — unsanitized input, PII in logs
-5. **Over-engineering** — premature abstractions
-6. **Test Theater** — tests that verify nothing
-7. **Context Amnesia** — inconsistent patterns
-8. **Stale Patterns** — deprecated approaches
-
-## Requirements
-
-- [Claude Code](https://claude.ai/code) (Max plan recommended for agents)
-- Node.js ≥18
-- Git
-- GitHub CLI (`gh`) for /st-bootstrap, /st-board, /st-agent
+| Strategy | Impact |
+|----------|--------|
+| Per-project install | ~52K tokens saved per turn in other projects |
+| Output truncation | ~80% less context from tool output |
+| Parallel validation | 3 simultaneous calls instead of sequential |
+| Incremental validation | Skip if unchanged since last check |
+| Role filtering | Smaller skill surface per user type |
 
 ## Stack Support
 
-Stania detects and adapts to your stack:
+Stania detects and adapts:
 
-| Stack | Typecheck | Lint | Test | Mutate |
-|-------|-----------|------|------|--------|
-| TypeScript | tsc strict | Biome | Vitest | Stryker |
-| Python | mypy | ruff | pytest | mutmut |
-| Go | go vet | golangci-lint | go test | go-mutesting |
+| | TypeScript | Python | Go |
+|-|-----------|--------|-----|
+| **Typecheck** | tsc strict | mypy | go vet |
+| **Lint** | Biome | ruff | golangci-lint |
+| **Test** | Vitest | pytest | go test |
+| **Mutate** | Stryker | mutmut | go-mutesting |
+
+## Requirements
+
+- [Claude Code](https://claude.ai/code) (Max plan recommended for background agents)
+- Node.js ≥ 18
+- Git + [GitHub CLI](https://cli.github.com/) (`gh`)
+
+## Documentation
+
+- [Workflow Reference](docs/workflow.md) — Complete team + solo workflow details
+- [Frontend Guide](docs/frontend-guide.md) — Step-by-step for frontend engineers
+- [Layout Catalog](templates/layout-catalog.md) — All 9 pre-defined layouts
+- [UI Standards](templates/ui-standards.md) — Architecture rules enforced on generation
+
+## Contributing
+
+```bash
+git clone https://github.com/cloudpetals/stania.git
+cd stania
+# Edit commands in commands/, skill in skills/st/SKILL.md
+# Test: cd <any-project> && bash /path/to/stania/install.sh
+```
 
 ## License
 
-MIT — [Cloudpetals](https://github.com/cloudpetals)
+[MIT](LICENSE)
+
+---
+
+<p align="center">
+  Built by <a href="https://github.com/cloudpetals">Cloudpetals</a>
+</p>
