@@ -16,6 +16,7 @@ Si `layout-catalog.md` no existe: copiarlo de templates/.
 
 - `/st-ui <name>` — Genera desde spec existente en `.stania/ui-specs/<name>.md`
 - `/st-ui --new` — Crea spec interactivamente y luego genera
+- `/st-ui --refine <name>` — Aplica ajustes visuales a componente existente
 - `/st-ui --list` — Muestra specs disponibles
 
 ## Proceso
@@ -154,6 +155,72 @@ Guiar al frontend con preguntas cerradas:
 
 Generar spec → mostrar al frontend → confirmar → generar codigo.
 
+## Modo --refine (ajustes visuales)
+
+El frontend pide cambios en lenguaje natural sobre un componente ya generado.
+NO regenera desde cero — edita el código existente.
+
+### Proceso
+
+1. Leer el componente actual:
+```bash
+cat features/<feature>/components/<name>.tsx
+```
+
+2. Leer ui-standards.md (para no violar reglas al editar)
+
+3. Preguntar: "Que quieres ajustar?" — el frontend responde en lenguaje natural:
+   - "mas padding en las cards"
+   - "sombra mas pronunciada en hover"
+   - "transicion suave al abrir el dropdown"
+   - "el boton principal mas grande en mobile"
+   - "fondo degradado de azul a morado"
+   - "animacion de entrada tipo fade-in con slide-up"
+
+4. Aplicar cambios SOLO en Tailwind classes o agregar CSS animations.
+   - Preferir utilidades de Tailwind (`transition-all duration-300 ease-out`)
+   - Para animaciones custom: agregar `@keyframes` en globals.css + clase Tailwind con `animate-[name]`
+   - NUNCA romper la arquitectura (no convertir Server en Client por un hover effect)
+   - NUNCA agregar dependencias nuevas para un ajuste visual
+
+5. Si el ajuste requiere interactividad (hover state, click animation):
+   - Verificar si ya es Client Component
+   - Si no: extraer SOLO la parte interactiva a un `.client.tsx` leaf
+   - Usar CSS-only cuando sea posible (`group-hover:`, `peer-checked:`, `transition-*`)
+
+6. Mostrar el diff al frontend para confirmacion.
+
+7. Si confirma:
+```bash
+pnpm typecheck --filter web 2>&1 | tail -3
+git add features/<feature>/
+git commit -m "style(<name>): <descripcion corta del ajuste>"
+```
+
+### Ajustes comunes (CSS-only, sin Client boundary)
+
+| Peticion | Tailwind |
+|----------|----------|
+| Sombra | `shadow-sm` `shadow-md` `shadow-lg` `shadow-xl` |
+| Bordes redondeados | `rounded-sm` `rounded-md` `rounded-lg` `rounded-full` |
+| Hover effect | `hover:scale-105 hover:shadow-lg transition-all` |
+| Fade in | `animate-in fade-in duration-300` |
+| Slide up | `animate-in slide-in-from-bottom-4 duration-300` |
+| Gradiente | `bg-gradient-to-r from-blue-500 to-purple-600` |
+| Glassmorphism | `bg-white/10 backdrop-blur-md border border-white/20` |
+| Spacing | `p-4 md:p-6 lg:p-8` (responsive padding) |
+| Max width | `max-w-sm` `max-w-md` `max-w-lg` `max-w-2xl` |
+
+### Efectos que requieren Client boundary
+
+| Peticion | Solucion |
+|----------|----------|
+| Click animation | `framer-motion` o CSS `active:scale-95` |
+| Scroll-triggered | `intersection-observer` + class toggle |
+| Drag & drop | Requiere lib (`@dnd-kit`) |
+| Tooltip on hover | shadcn/ui Tooltip (ya es Client) |
+| Count-up numbers | Client + `useEffect` |
+
 ## Reglas
 
 - NUNCA generar sin leer ui-standards.md primero
@@ -165,3 +232,5 @@ Generar spec → mostrar al frontend → confirmar → generar codigo.
 - SIEMPRE responsive (mobile-first desde layout catalog)
 - Si falta contrato → "Primero /st-contract <name>"
 - Si falta mock → verificar que MSW handler existe
+- En --refine: NUNCA romper arquitectura por un ajuste visual
+- En --refine: preferir CSS-only sobre JavaScript cuando sea posible
