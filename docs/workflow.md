@@ -1,162 +1,275 @@
 # Stania — Workflow Reference
 
-Complete reference for the Stania engineering pipeline.
-For quick command usage, see the [README](../README.md).
+Complete reference for both team and solo workflows.
 
-## Daily Workflow
+## Team Workflow (Contract-First)
+
+### Overview
 
 ```
-1. Start session
-   → Read CLAUDE.md (automatic)
-   → /st-status to see where you left off (reads .stania/progress.json)
-
-2. Pick next aggregate/feature
-   → /st-spec to define it formally (saved to .stania/specs/)
-
-3. Generate code
-   → /st-build (layer by layer, with approval gates, progress tracked)
-
-4. Validate
-   → /st-check (automated pipeline + AI code smell scan)
-   → /st-mutate (optional, recommended for domain logic)
-
-5. Ship
-   → /st-ship (full audit + PR creation)
-
-6. Close session
-   → /st-retro (capture decisions, update docs, save session summary)
+CONTRACT → parallel { agent(backend), frontend(UI) } → INTEGRATE → SHIP
 ```
+
+The contract is the interface between frontend and backend. Once defined, both sides work independently using mocks.
+
+### Day-by-Day Example
+
+#### Day 0: Project Setup
+
+```
+/st-bootstrap     → repo, CI/CD, monorepo, deploy config
+/st-model         → domain model (bounded contexts, aggregates)
+```
+
+**Output**: GitHub repo (private), apps/web + apps/api + packages/contracts, CI/CD workflows, .stania/ initialized.
+
+#### Day 1: First Feature
+
+**Tech Lead:**
+```
+/st-contract create-reservation    → defines endpoint, types, mocks
+/st-agent create-reservation       → autonomous backend implementation
+```
+
+**Frontend (simultaneously):**
+```
+# Write .stania/ui-specs/reservation-form.md (from template)
+/st-ui reservation-form            → generates component with mocks
+/st-ui --refine reservation-form   → visual adjustments
+```
+
+#### Day 2: Integration
+
+**When agent finishes (push notification):**
+```
+# Review PR → approve → merge
+/st-integrate reservation-form     → replace mocks with real API
+```
+
+#### Day 3+: Steady Cadence
+
+```
+MORNING:   /st-board → see all work status
+           /st-contract X → define next feature
+           /st-agent X → launch agent
+
+DURING:    Frontend writes specs → /st-ui → /st-ui --refine
+
+ON PR:     Review → merge → /st-integrate
+
+FRIDAY:    /st-retro → close week
+```
+
+### Roles
+
+| Role | Responsibilities | Commands Used |
+|------|-----------------|--------------|
+| Tech Lead | Architecture, contracts, decisions, review PRs | /st-bootstrap, /st-contract, /st-agent, /st-integrate, /st-ship |
+| Frontend | UI specs, visual review in Storybook | /st-ui, /st-ui --refine |
+| PM/Lead | Track progress, priorities | /st-board, /st-status |
+
+### Contract Flow (detailed)
+
+```
+/st-contract create-order
+     │
+     ├── packages/contracts/create-order.ts (Zod schemas + types)
+     │
+     ├── packages/contracts/generated/
+     │   ├── mocks/create-order.mock.ts     (MSW handler)
+     │   ├── client/create-order.ts         (typed fetch wrapper)
+     │   └── ports/create-order.port.ts     (backend interface)
+     │
+     └── GitHub Issue (label: "agent")
+```
+
+Frontend imports from `generated/client/` and `generated/mocks/`.
+Backend implements `generated/ports/`.
+Types are shared — zero drift.
+
+---
+
+## Solo Workflow (Pipeline)
+
+### Overview
+
+```
+SPEC → BUILD → CHECK → SHIP → RETRO
+```
+
+For individual features where you're doing both design and implementation.
+
+### Fast Path (/st-quick)
+
+For T1/T2 changes (UI tweaks, config, simple features):
+```
+/st-quick    → implement → validate (truncated) → commit
+```
+
+No spec, no approval gates. Just validated code.
+
+### Full Pipeline
+
+```
+/st-spec     → invariants, errors, edge cases → .stania/specs/
+/st-build    → domain → application → infrastructure (layer by layer)
+/st-check    → typecheck + lint + tests (parallel) + AI smell scan
+/st-ship     → audit + PR
+/st-retro    → session close
+```
+
+---
+
+## Frontend Workflow (detailed)
+
+### What the frontend person does
+
+1. **Copies template**: `.stania/ui-specs/_TEMPLATE.md` → `.stania/ui-specs/<name>.md`
+2. **Picks a layout** from `.stania/layout-catalog.md` (8 options)
+3. **Fills slots**: what goes in each area of the layout
+4. **Defines states**: loading, empty, error, success
+5. **Lists interactions**: what the user can do
+6. **Optionally adds design notes**: animations, specific component choices
+
+### What Claude generates
+
+```
+features/<name>/
+├── components/
+│   ├── <name>.tsx              ← Server Component
+│   ├── <name>.client.tsx       ← Client (interactive parts only)
+│   ├── <name>.skeleton.tsx     ← Loading state
+│   └── <name>.error.tsx        ← Error boundary
+├── hooks/
+│   └── use-<resource>.ts      ← TanStack Query with contract types
+├── lib/
+│   └── <name>.utils.ts        ← Pure functions
+└── __tests__/
+    └── <name>.test.tsx        ← Testing Library + axe-core
+```
+
+### Making visual adjustments
+
+**Option A — Direct edit** (if frontend knows Tailwind):
+Edit classes in the .tsx file directly.
+
+**Option B — /st-ui --refine** (natural language):
+```
+/st-ui --refine order-list
+> "hover shadow on cards, fade-in animation, status badges with colored backgrounds"
+```
+
+Claude edits Tailwind classes only. Never breaks architecture.
+
+**Option C — Update spec + regenerate** (structural changes):
+Update the spec → run `/st-ui <name>` again.
+
+### Layout Catalog Reference
+
+| Layout | Slots | Mobile Behavior |
+|--------|-------|-----------------|
+| LIST | header, filters, item-row, pagination | Filters above list, rows become cards |
+| DETAIL | header, hero, key-info, tabs | Hero above info, tabs become accordion |
+| FORM | header, fields, footer | Full-width, sticky footer |
+| DASHBOARD | header, kpi-cards, main-chart, side-panel, table | KPIs 2-col, chart full-width, panel below |
+| GRID | header, card (repeated) | 1→2→3-4 columns |
+| SIDEBAR | nav, content | Nav becomes drawer |
+| MODAL | header, body, footer | Full-screen sheet |
+| SPLIT | left-panel, right-panel | One panel at a time |
+| EMPTY | illustration, title, description, cta | Centered, constrained width |
+
+---
 
 ## State Management
 
-Stania tracks state in `.stania/` — no external runtime needed.
-Claude Code reads/writes JSON directly.
-
-### Files
+### Files in .stania/
 
 | File | Purpose | Git |
 |------|---------|-----|
-| `config.json` | Stack, architecture, thresholds | Committed |
+| `config.json` | Stack, architecture, deploy, team settings | Committed |
 | `domain-model.json` | Bounded contexts, aggregates, events | Committed |
+| `ui-standards.md` | Frontend architecture rules | Committed |
+| `layout-catalog.md` | Pre-defined layout patterns | Committed |
 | `progress.json` | Per-aggregate layer completion | Gitignored |
 | `specs/*.md` | Approved feature specs | Gitignored |
+| `ui-specs/*.md` | UI component specs | Committed |
 
-### Design rules
+### Design Rules
 
-1. **Advisory, not blocking**: If state is missing or corrupted, commands fall back to filesystem scanning.
-2. **Read-merge-write**: Always read current state, merge changes, then write. Never overwrite blindly.
-3. **Human-readable**: Users can inspect and manually edit JSON if needed.
-4. **Graceful degradation**: No `.stania/`? Commands still work — just without cross-session tracking.
+1. **Advisory, not blocking** — commands work without `.stania/`
+2. **Read-merge-write** — never overwrite blindly
+3. **Human-readable** — users can inspect and edit JSON
+4. **Graceful degradation** — missing state = filesystem scanning fallback
 
-## Stage Details
+---
 
-### Stage 0: /st-bootstrap
+## Agent Workflow (detailed)
 
-**When**: Starting a new project or joining one that lacks structure.
+### What /st-agent does
 
-**What it does**:
-1. Diagnoses current state (git, tooling, docs)
-2. Gathers project context
-3. Creates `.stania/config.json` and `.stania/progress.json`
-4. Sets up: git, CLAUDE.md, docs/, monorepo, quality tooling, pre-commit hooks
-5. Verifies everything works
-6. Makes initial commit
+1. Reads contract + domain model
+2. Creates feature branch (`feat/<context>/<name>`)
+3. Implements: domain → application → infrastructure → route
+4. Runs /st-check (typecheck + lint + tests)
+5. Commits with conventional message
+6. Creates PR with description + labels
+7. Sends push notification
 
-**State created**: `config.json`, `progress.json` (empty)
+### Requirements
 
-### Stage 1: /st-spec
+- Claude Code Max plan (for background agents)
+- GitHub CLI (`gh`) authenticated
+- Contract must exist (run /st-contract first)
 
-**When**: Before generating ANY code for a feature.
+### What to review in agent PRs
 
-**What it produces**: Formal spec with invariants, errors, edge cases, critical tests.
+- Domain model alignment (are invariants correct?)
+- Error handling (all contract error codes covered?)
+- Security (input validation at boundary)
+- Tests meaningful (not test theater)
 
-**State**: Reads `domain-model.json` for context. Saves approved spec to `.stania/specs/{slug}.md`. Updates `progress.json` with specPath.
+---
 
-### Stage 2: /st-build
+## CI/CD Pipeline
 
-**When**: After spec is approved.
+### PR Checks (ci.yml)
 
-**Generation order** (strict):
-1. **Domain** — Value Objects → Aggregate → Events → Ports
-2. **Application** — Command/Query → Handler → DTOs
-3. **Infrastructure** — Adapters → DI wiring
-4. Each layer gets tests before moving to next
-5. Each layer requires user approval
+```yaml
+jobs:
+  check:          # typecheck + lint + test
+  lighthouse:     # Performance ≥90, A11y ≥95, BP ≥90
+```
 
-**State**: Updates `progress.json` layers after each phase. Marks status "in-progress" → "done".
+### Deploy (deploy.yml, on merge to main)
 
-### Stage 3: /st-check
+```yaml
+jobs:
+  deploy-web:     # Vercel (frontend)
+  deploy-api:     # Cloud Run (backend)
+```
 
-**When**: After /st-build, or any time you want to validate.
+### Required Secrets
 
-**Phase 1 — Automated validation**: typecheck, lint, tests, format
-**Phase 2 — Hardening**: architecture enforcement, 8 AI code smells, security scan
+| Secret | For |
+|--------|-----|
+| `VERCEL_TOKEN` | Frontend deploy |
+| `VERCEL_ORG_ID` | Vercel organization |
+| `VERCEL_PROJECT_ID` | Vercel project |
+| `GCP_SA_KEY` | Cloud Run deploy |
 
-**Output**: PASS / WARN / FAIL verdict.
-**State**: Updates `progress.json` lastCheck timestamp.
-
-### Stage 4: /st-ship
-
-**When**: Feature complete and /st-check passes.
-
-**Checklist**: repo state, full pipeline (strict), coverage, mutation testing, manual checklist, PR creation.
-
-### Stage 5: /st-retro
-
-**When**: End of work session.
-
-**What it does**: Summarize session, create ADRs, update docs, suggest next steps.
-**State**: Saves `lastSession` to `progress.json`.
-
-## AI Code Smells — Detailed
-
-### 1. API Hallucination
-AI invents methods that don't exist in the library.
-**Detection**: Check every external API call against actual types.
-
-### 2. Happy Path Bias
-Only handles success. No error handling, no timeouts.
-**Detection**: Missing try/catch, unchecked nulls, no retry logic.
-
-### 3. Invisible Coupling
-Domain imports from infrastructure.
-**Detection**: Check import paths in domain files.
-
-### 4. Security Blindness
-Unsanitized input, PII in logs, secrets in code.
-**Detection**: Trace user input from entry to usage. Check logs for PII.
-
-### 5. Over-engineering
-Premature abstractions for requirements that don't exist.
-**Detection**: "Would removing this abstraction break anything?"
-
-### 6. Test Theater
-Tests pass but verify nothing. Mocking everything.
-**Detection**: Check assertion count. Tests with only `toBeDefined()`.
-
-### 7. Context Amnesia
-Inconsistent patterns across files.
-**Detection**: Same problem solved differently in two places.
-
-### 8. Stale Patterns
-Deprecated APIs, outdated approaches.
-**Detection**: Check for deprecation warnings.
+---
 
 ## Review Tiers
 
-### T1 Auto
-**Scope**: UI, config, cosmetic, dep bumps.
-**Process**: /st-check passes → commit.
+| Tier | Scope | Process |
+|------|-------|---------|
+| T1 Auto | UI, config, cosmetic | /st-quick → commit |
+| T2 Light | New features | Pipeline + PR review |
+| T3 Deep | Domain, security, billing | Full pipeline + mutations + manual review |
 
-### T2 Light
-**Scope**: New features, handlers, endpoints.
-**Process**: /st-check + quick review of contracts.
+---
 
-### T3 Deep
-**Scope**: Domain logic, security, billing, migrations.
-**Process**: /st-check + /st-mutate + manual review.
-
-## Clean Architecture Quick Reference
+## Clean Architecture Reference
 
 ```
 ┌─────────────────────────────────────────┐
@@ -165,7 +278,6 @@ Deprecated APIs, outdated approaches.
 ├─────────────────────────────────────────┤
 │              Application                │
 │    (Use Cases, Command/Query Handlers)  │
-│         Orchestration only.             │
 ├─────────────────────────────────────────┤
 │               Domain                    │
 │  (Entities, Value Objects, Aggregates,  │
@@ -174,32 +286,42 @@ Deprecated APIs, outdated approaches.
 ├─────────────────────────────────────────┤
 │            Infrastructure               │
 │   (Repositories, External Services,     │
-│    Framework adapters, DI container)     │
+│    Framework adapters, DI container)    │
 └─────────────────────────────────────────┘
-
-Dependencies flow INWARD only.
-Domain depends on nothing.
 ```
 
 ### Rules
-- Private constructors + factory methods on aggregates
+- Dependencies flow inward only
+- Domain depends on nothing
+- Private constructors + factory methods
 - Result pattern for fallible operations
 - Value Objects over primitives
-- Port interfaces in domain, implementations in infrastructure
-- One aggregate per transaction boundary
+- Ports in domain, implementations in infrastructure
 
-## Test Distribution
+---
 
-| Layer | Target | What to test |
-|-------|--------|-------------|
-| Domain | 60% | Invariants, business rules, edge cases |
-| Application | 25% | Use case orchestration, error flows |
-| Integration | 10% | Repository implementations, external APIs |
-| E2E | 5% | Critical user flows only |
+## AI Code Smells
 
-## Mutation Testing
+| # | Smell | Detection |
+|---|-------|-----------|
+| 1 | API Hallucination | Check external calls against actual types |
+| 2 | Happy Path Bias | Missing try/catch, unchecked nulls |
+| 3 | Invisible Coupling | Domain imports from infrastructure |
+| 4 | Security Blindness | Unsanitized input, PII in logs |
+| 5 | Over-engineering | Abstractions for non-existent requirements |
+| 6 | Test Theater | Tests with only `toBeDefined()` |
+| 7 | Context Amnesia | Same problem solved differently |
+| 8 | Stale Patterns | Deprecated APIs |
 
-**What**: Modify code automatically and check if tests catch it.
-**When**: /st-mutate on demand, or during /st-ship for T3 reviews.
-**Target**: >80% kill rate on domain logic.
-**Tools**: Stryker (TS), mutmut (Python), go-mutesting (Go)
+---
+
+## Token Efficiency
+
+| Strategy | Savings |
+|----------|---------|
+| Per-project install (not global) | ~52K tokens/turn in other projects |
+| Output truncation (`\| tail -N`) | ~80% less context from tool output |
+| Parallel validation (3 simultaneous) | Same result, fewer turns |
+| Incremental /st-ship | Skip re-validation if <10 min |
+| Lazy domain model loading | Only read relevant bounded context |
+| testFlags in config | No re-calculating runner flags |
