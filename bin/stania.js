@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 const COMMANDS_DIR = path.join(__dirname, '..', 'commands');
 const SKILLS_DIR = path.join(__dirname, '..', 'skills');
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
@@ -77,12 +77,22 @@ function install(projectDir) {
   console.log('');
   log(`${BOLD}${GREEN}Done.${NC} ${installed} new, ${updated} updated`);
   console.log('');
-  log(`${BOLD}Usage:${NC}`);
+  log(`${BOLD}Start here:${NC}`);
+  log(`  /st-next        ${DIM}What should I do now? (role-aware)${NC}`);
+  console.log('');
+  log(`${BOLD}Team workflow:${NC}`);
   log(`  /st-bootstrap   Setup project (repo, CI/CD, deploy)`);
-  log(`  /st-contract    Define API contract`);
-  log(`  /st-agent       Launch autonomous implementation`);
-  log(`  /st-board       Team progress board`);
-  log(`  /st-quick       Fast path (validate + commit)`);
+  log(`  /st-contract    Define API contract → mocks + types`);
+  log(`  /st-agent       Launch autonomous backend agent`);
+  log(`  /st-ui          Generate frontend from spec`);
+  log(`  /st-integrate   Connect frontend to real backend`);
+  log(`  /st-board       GitHub status board`);
+  console.log('');
+  log(`${BOLD}Quality:${NC}`);
+  log(`  /st-e2e         Generate Playwright E2E tests`);
+  log(`  /st-migrate     Handle contract changes`);
+  log(`  /st-seed        Generate test fixtures`);
+  log(`  /st-deps        Dependency health audit`);
   console.log('');
 }
 

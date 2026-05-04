@@ -98,9 +98,18 @@ Copiar UI templates a `.stania/`:
 - `.stania/ui-standards.md` ← desde templates/ui-standards.md (o inline)
 - `.stania/layout-catalog.md` ← desde templates/layout-catalog.md (o inline)
 - `.stania/ui-specs/` ← crear directorio vacío
+- `.stania/ui-specs/_TEMPLATE.md` ← desde templates/ui-spec-template.md
 
-Crear `.stania/ui-specs/_TEMPLATE.md` desde templates/ui-spec-template.md.
-El frontend copia este template para cada nuevo componente.
+Crear `.stania/me.json` para el usuario actual:
+```json
+{ "role": "lead", "name": "[nombre del usuario]" }
+```
+
+Agregar a `.gitignore`:
+```
+.stania/me.json
+.stania/progress.json
+```
 
 ## Paso 5: Montar estructura
 
@@ -173,7 +182,13 @@ pnpm add -D typescript @types/node vitest @biomejs/biome turbo
 pnpm add -D msw @storybook/react --filter web
 pnpm add -D @testing-library/react @testing-library/user-event vitest-axe --filter web
 pnpm add -D @tanstack/react-query --filter web
+pnpm add -D @playwright/test --filter web
 pnpm add zod --filter web --filter api
+```
+
+Inicializar Playwright:
+```bash
+cd apps/web && npx playwright install --with-deps chromium && cd ../..
 ```
 
 ## Paso 7: CI/CD
