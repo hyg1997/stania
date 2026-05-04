@@ -28,36 +28,36 @@ The difference: **70% thinking/designing/specifying, 30% generating/reviewing.**
 
 | Command | Stage | What it does |
 |---------|-------|-------------|
-| `/bootstrap` | 0 | From idea → configured project + `.stania/` init |
-| `/spec` | 1 | Formal spec: invariants, errors, edge cases. Saved to `.stania/specs/` |
-| `/build` | 2 | Controlled generation: domain → app → infra, with progress tracking |
-| `/check` | 3 | Validate (typecheck, lint, tests) + Harden (architecture, AI smells, security) |
-| `/ship` | 4 | Pre-deploy audit: full pipeline + coverage + mutations + PR |
-| `/retro` | — | Session close: capture decisions, update docs, suggest next steps |
+| `/st-bootstrap` | 0 | From idea → configured project + `.stania/` init |
+| `/st-spec` | 1 | Formal spec: invariants, errors, edge cases. Saved to `.stania/specs/` |
+| `/st-build` | 2 | Controlled generation: domain → app → infra, with progress tracking |
+| `/st-check` | 3 | Validate (typecheck, lint, tests) + Harden (architecture, AI smells, security) |
+| `/st-ship` | 4 | Pre-deploy audit: full pipeline + coverage + mutations + PR |
+| `/st-retro` | — | Session close: capture decisions, update docs, suggest next steps |
 
 ### Extra
 
 | Command | What it does |
 |---------|-------------|
-| `/mutate` | Mutation testing on demand. "Do your tests actually catch bugs?" |
-| `/model` | Extract DDD domain model → `.stania/domain-model.json` |
-| `/status` | Show progress per bounded context and aggregate |
+| `/st-mutate` | Mutation testing on demand. "Do your tests actually catch bugs?" |
+| `/st-model` | Extract DDD domain model → `.stania/domain-model.json` |
+| `/st-status` | Show progress per bounded context and aggregate |
 
 ## The Pipeline
 
 ```
-  /bootstrap                    /retro
+  /st-bootstrap                  /st-retro
        │                            ▲
        ▼                            │
-  ┌─────────┐    ┌─────────┐    ┌──────┐    ┌──────┐
-  │  /spec   │───▶│  /build  │───▶│/check│───▶│/ship │
-  │          │    │          │    │      │    │      │
-  │Invariants│    │Domain 1st│    │Verify│    │Audit │
-  │Errors    │    │Layer by  │    │Harden│    │Deploy│
-  │Edge cases│    │layer     │    │Smells│    │PR    │
-  └─────────┘    └─────────┘    └──────┘    └──────┘
+  ┌──────────┐   ┌──────────┐   ┌────────┐   ┌────────┐
+  │ /st-spec  │──▶│ /st-build │──▶│/st-check│──▶│/st-ship│
+  │           │   │           │   │        │   │        │
+  │Invariants │   │Domain 1st │   │Verify  │   │Audit   │
+  │Errors     │   │Layer by   │   │Harden  │   │Deploy  │
+  │Edge cases │   │layer      │   │Smells  │   │PR      │
+  └──────────┘   └──────────┘   └────────┘   └────────┘
        ▲                            │
-       └──── /mutate (on demand) ◀──┘
+       └── /st-mutate (on demand) ◀─┘
 ```
 
 ## State Tracking
@@ -102,9 +102,9 @@ bash install.sh --uninstall  # Remove all Stania commands
 ## Documentation
 
 - [Workflow Reference](docs/workflow.md) — Full pipeline details, AI code smells, review tiers, Clean Architecture rules
-- [Skill Definition](skills/stania/SKILL.md) — Core behavior rules and state schemas
+- [Skill Definition](skills/st/SKILL.md) — Core behavior rules and state schemas
 
-## AI Code Smells (checked by /check)
+## AI Code Smells (checked by /st-check)
 
 1. **API Hallucination** — AI invented a method that doesn't exist
 2. **Happy Path Bias** — No error handling for failures
@@ -115,7 +115,7 @@ bash install.sh --uninstall  # Remove all Stania commands
 7. **Context Amnesia** — Inconsistent patterns across modules
 8. **Stale Patterns** — Using deprecated approaches
 
-## Review Tiers (used by /check)
+## Review Tiers (used by /st-check)
 
 | Tier | When | What |
 |------|------|------|

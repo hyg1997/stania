@@ -21,7 +21,7 @@ Si `.stania/progress.json` no existe, buscar bounded contexts en:
 3. docs/02-architecture.md
 4. Estructura de directorios (src/domain/*, apps/*/src/domain/*)
 
-Si no encuentra modelo: "No encuentro bounded contexts. Corre /model primero."
+Si no encuentra modelo: "No encuentro bounded contexts. Corre /st-model primero."
 
 Para cada aggregate detectado, escanear:
 
@@ -68,15 +68,15 @@ Specs:   3 aprobadas en .stania/specs/
 ## Paso 3: Sugerir siguiente accion
 
 Basado en el estado, en orden de prioridad:
-1. Si hay aggregates sin spec → "/spec para [aggregate]"
-2. Si hay spec sin domain → "/build para [aggregate]"
-3. Si hay domain sin app → "/build para [aggregate] (falta application)"
-4. Si hay app sin infra → "/build para [aggregate] (falta infrastructure)"
+1. Si hay aggregates sin spec → "/st-spec para [aggregate]"
+2. Si hay spec sin domain → "/st-build para [aggregate]"
+3. Si hay domain sin app → "/st-build para [aggregate] (falta application)"
+4. Si hay app sin infra → "/st-build para [aggregate] (falta infrastructure)"
 5. Si hay layers sin tests → "Faltan tests para [aggregate]"
-6. Si hay done sin lastCheck → "/check para validar"
-7. Si todo esta completo → "/check para validar, despues /ship"
+6. Si hay done sin lastCheck → "/st-check para validar"
+7. Si todo esta completo → "/st-check para validar, despues /st-ship"
 
 Mostrar:
 ```
-NEXT: /spec → VoiceSession (first incomplete aggregate)
+NEXT: /st-spec → VoiceSession (first incomplete aggregate)
 ```

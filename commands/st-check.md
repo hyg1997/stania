@@ -1,5 +1,5 @@
 Pipeline de validacion + hardening. Etapa 3 del pipeline.
-Corre despues de /build o antes de commit. Actualiza `.stania/progress.json` con resultado.
+Corre despues de /st-build o antes de commit. Actualiza `.stania/progress.json` con resultado.
 
 ## Fase 1: Validacion automatizada
 

@@ -38,7 +38,7 @@ echo -e "  ${DIM}From vibe coding to production-ready engineering${NC}"
 echo ""
 
 # Detect source: piped from curl or run from local clone
-if [ -t 0 ] && [ -f "$(dirname "$0")/commands/bootstrap.md" ]; then
+if [ -t 0 ] && [ -f "$(dirname "$0")/commands/st-bootstrap.md" ]; then
     STANIA_DIR="$(cd "$(dirname "$0")" && pwd)"
     echo -e "  ${DIM}Source: local (${STANIA_DIR})${NC}"
 else
@@ -85,7 +85,7 @@ fi
 if [ "$UNINSTALL" = true ]; then
     echo ""
     REMOVED=0
-    for cmd in bootstrap spec build check ship retro mutate model status; do
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
         target="$CLAUDE_CMD_DIR/${cmd}.md"
         if [ -f "$target" ]; then
             if [ "$DRY_RUN" = true ]; then
@@ -99,12 +99,12 @@ if [ "$UNINSTALL" = true ]; then
     done
 
     # Remove skill
-    if [ -d "$CLAUDE_SKILLS_DIR/stania" ]; then
+    if [ -d "$CLAUDE_SKILLS_DIR/st" ]; then
         if [ "$DRY_RUN" = true ]; then
-            echo -e "  ${YELLOW}[dry-run]${NC} Would remove skill: stania"
+            echo -e "  ${YELLOW}[dry-run]${NC} Would remove skill: st"
         else
-            rm -rf "$CLAUDE_SKILLS_DIR/stania"
-            echo -e "  ${RED}-${NC}  Removed: skill stania"
+            rm -rf "$CLAUDE_SKILLS_DIR/st"
+            echo -e "  ${RED}-${NC}  Removed: skill st"
         fi
     fi
 
@@ -157,16 +157,16 @@ done
 
 # --- Install Skill ---
 
-if [ "$MINIMAL" = false ] && [ -d "$STANIA_DIR/skills/stania" ]; then
+if [ "$MINIMAL" = false ] && [ -d "$STANIA_DIR/skills/st" ]; then
     echo ""
     echo -e "  ${BOLD}Installing skill...${NC}"
 
     if [ "$DRY_RUN" = true ]; then
-        echo -e "  ${YELLOW}[dry-run]${NC} Would install skill: stania"
+        echo -e "  ${YELLOW}[dry-run]${NC} Would install skill: st"
     else
-        mkdir -p "$CLAUDE_SKILLS_DIR/stania"
-        cp "$STANIA_DIR/skills/stania/SKILL.md" "$CLAUDE_SKILLS_DIR/stania/SKILL.md"
-        echo -e "  ${GREEN}+${NC}  Installed: skill stania"
+        mkdir -p "$CLAUDE_SKILLS_DIR/st"
+        cp "$STANIA_DIR/skills/st/SKILL.md" "$CLAUDE_SKILLS_DIR/st/SKILL.md"
+        echo -e "  ${GREEN}+${NC}  Installed: skill st"
     fi
 fi
 
@@ -176,17 +176,17 @@ echo ""
 echo -e "  ${BOLD}${GREEN}Done.${NC} ${NEW} new, ${UPDATED} updated, ${UNCHANGED} unchanged"
 echo ""
 echo -e "  ${BOLD}Pipeline commands:${NC}"
-echo -e "    ${GREEN}/bootstrap${NC}  From idea to configured project + .stania/ init"
-echo -e "    ${GREEN}/spec${NC}       Write spec before coding (saved to .stania/specs/)"
-echo -e "    ${GREEN}/build${NC}      Controlled generation (domain first, progress tracked)"
-echo -e "    ${GREEN}/check${NC}      Validate + harden + AI code smells"
-echo -e "    ${GREEN}/ship${NC}       Pre-deploy audit + PR"
-echo -e "    ${GREEN}/retro${NC}      Session close + capture decisions"
+echo -e "    ${GREEN}/st-bootstrap${NC}  From idea to configured project + .stania/ init"
+echo -e "    ${GREEN}/st-spec${NC}       Write spec before coding (saved to .stania/specs/)"
+echo -e "    ${GREEN}/st-build${NC}      Controlled generation (domain first, progress tracked)"
+echo -e "    ${GREEN}/st-check${NC}      Validate + harden + AI code smells"
+echo -e "    ${GREEN}/st-ship${NC}       Pre-deploy audit + PR"
+echo -e "    ${GREEN}/st-retro${NC}      Session close + capture decisions"
 echo ""
 echo -e "  ${BOLD}Extra:${NC}"
-echo -e "    ${BLUE}/mutate${NC}     Mutation testing (on demand)"
-echo -e "    ${BLUE}/model${NC}      Extract DDD domain model → .stania/domain-model.json"
-echo -e "    ${BLUE}/status${NC}     Implementation progress (reads .stania/progress.json)"
+echo -e "    ${BLUE}/st-mutate${NC}     Mutation testing (on demand)"
+echo -e "    ${BLUE}/st-model${NC}      Extract DDD domain model → .stania/domain-model.json"
+echo -e "    ${BLUE}/st-status${NC}     Implementation progress (reads .stania/progress.json)"
 echo ""
 echo -e "  ${DIM}State: .stania/ in each project (cross-session continuity)${NC}"
 echo -e "  ${DIM}Docs: ${REPO_URL}${NC}"

@@ -16,7 +16,7 @@ Reportar:
 
 ## Paso 2: Pipeline completo
 
-Correr todo lo de /check pero mas estricto:
+Correr todo lo de /st-check pero mas estricto:
 
 ### Validacion
 - Typecheck (zero errors, zero warnings)

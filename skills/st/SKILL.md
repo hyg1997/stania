@@ -1,5 +1,5 @@
 ---
-name: stania
+name: st
 description: "Engineering workflow with state tracking. 5-stage pipeline: SPEC → BUILD → CHECK → SHIP → RETRO. Maintains .stania/ for cross-session continuity. Stack-agnostic, Clean Architecture aware."
 ---
 
@@ -127,7 +127,7 @@ State is managed by Claude Code directly (read/write JSON) — no external runti
 
 ## Pipeline Stages
 
-### Stage 1: SPEC (/spec)
+### Stage 1: SPEC (/st-spec)
 Before generating any code, write a formal spec with:
 - Bounded context and affected layers
 - Input/output types
@@ -139,7 +139,7 @@ Before generating any code, write a formal spec with:
 Save approved spec to `.stania/specs/{feature-slug}.md`.
 Do NOT generate code until approved.
 
-### Stage 2: BUILD (/build)
+### Stage 2: BUILD (/st-build)
 Generate code in strict order:
 1. Domain layer (zero external deps)
 2. Application layer (orchestration, no business logic)
@@ -148,7 +148,7 @@ Generate code in strict order:
 5. Each layer requires user approval before advancing
 6. Update `.stania/progress.json` after each layer completes
 
-### Stage 3: CHECK (/check)
+### Stage 3: CHECK (/st-check)
 Run automated validation + hardening:
 - Typecheck (tsc strict / mypy strict)
 - Lint (Biome / ruff / golangci-lint)
@@ -158,15 +158,15 @@ Run automated validation + hardening:
 - Security quick scan (secrets, dependency audit)
 - Update `progress.json` lastCheck timestamp
 
-### Stage 4: SHIP (/ship)
+### Stage 4: SHIP (/st-ship)
 Pre-deploy audit:
-- Full pipeline (stricter than /check)
+- Full pipeline (stricter than /st-check)
 - Test coverage report
 - Mutation testing (if configured)
 - Manual checklist
 - PR creation with structured body
 
-### Stage 5: RETRO (/retro)
+### Stage 5: RETRO (/st-retro)
 Session close:
 - Summarize completed work
 - Capture architectural decisions as ADRs

@@ -189,4 +189,4 @@ git commit -m "chore: project bootstrap with stania engineering tooling"
 Mostrar:
 - Que se creo
 - Que quedo pendiente
-- Siguiente paso: "/model para definir el dominio" o "/spec para la primera feature"
+- Siguiente paso: "/st-model para definir el dominio" o "/st-spec para la primera feature"

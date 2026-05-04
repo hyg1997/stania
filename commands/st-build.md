@@ -4,7 +4,7 @@ Requiere spec aprobada. Actualiza `.stania/progress.json` al completar cada capa
 ## Pre-requisito
 
 Verificar:
-1. Existe spec aprobada? Buscar en `.stania/specs/` o preguntar: "Corro /spec primero?"
+1. Existe spec aprobada? Buscar en `.stania/specs/` o preguntar: "Corro /st-spec primero?"
 2. Leer `.stania/config.json` para stack y arquitectura
 3. Leer `.stania/domain-model.json` para contexto del dominio
 4. Leer la spec relevante
@@ -95,7 +95,7 @@ Si algo falla → arreglar antes de reportar.
 Reportar:
 - Archivos creados/modificados
 - Tests: X passing, 0 failing
-- "Listo para /check o commit"
+- "Listo para /st-check o commit"
 
 ## Sin modelo DDD
 
@@ -110,4 +110,4 @@ Si `config.architecture !== "clean"`:
 - Si `.stania/` no existe, generar codigo sin tracking
 - Nunca bloquear por falta de estado — el estado facilita, no restringe
 - Si el usuario interrumpe entre fases, el progress refleja hasta donde llego
-- En la siguiente sesion, /status mostrara que capa falta
+- En la siguiente sesion, /st-status mostrara que capa falta

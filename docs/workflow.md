@@ -8,23 +8,23 @@ For quick command usage, see the [README](../README.md).
 ```
 1. Start session
    → Read CLAUDE.md (automatic)
-   → /status to see where you left off (reads .stania/progress.json)
+   → /st-status to see where you left off (reads .stania/progress.json)
 
 2. Pick next aggregate/feature
-   → /spec to define it formally (saved to .stania/specs/)
+   → /st-spec to define it formally (saved to .stania/specs/)
 
 3. Generate code
-   → /build (layer by layer, with approval gates, progress tracked)
+   → /st-build (layer by layer, with approval gates, progress tracked)
 
 4. Validate
-   → /check (automated pipeline + AI code smell scan)
-   → /mutate (optional, recommended for domain logic)
+   → /st-check (automated pipeline + AI code smell scan)
+   → /st-mutate (optional, recommended for domain logic)
 
 5. Ship
-   → /ship (full audit + PR creation)
+   → /st-ship (full audit + PR creation)
 
 6. Close session
-   → /retro (capture decisions, update docs, save session summary)
+   → /st-retro (capture decisions, update docs, save session summary)
 ```
 
 ## State Management
@@ -50,7 +50,7 @@ Claude Code reads/writes JSON directly.
 
 ## Stage Details
 
-### Stage 0: /bootstrap
+### Stage 0: /st-bootstrap
 
 **When**: Starting a new project or joining one that lacks structure.
 
@@ -64,7 +64,7 @@ Claude Code reads/writes JSON directly.
 
 **State created**: `config.json`, `progress.json` (empty)
 
-### Stage 1: /spec
+### Stage 1: /st-spec
 
 **When**: Before generating ANY code for a feature.
 
@@ -72,7 +72,7 @@ Claude Code reads/writes JSON directly.
 
 **State**: Reads `domain-model.json` for context. Saves approved spec to `.stania/specs/{slug}.md`. Updates `progress.json` with specPath.
 
-### Stage 2: /build
+### Stage 2: /st-build
 
 **When**: After spec is approved.
 
@@ -85,9 +85,9 @@ Claude Code reads/writes JSON directly.
 
 **State**: Updates `progress.json` layers after each phase. Marks status "in-progress" → "done".
 
-### Stage 3: /check
+### Stage 3: /st-check
 
-**When**: After /build, or any time you want to validate.
+**When**: After /st-build, or any time you want to validate.
 
 **Phase 1 — Automated validation**: typecheck, lint, tests, format
 **Phase 2 — Hardening**: architecture enforcement, 8 AI code smells, security scan
@@ -95,13 +95,13 @@ Claude Code reads/writes JSON directly.
 **Output**: PASS / WARN / FAIL verdict.
 **State**: Updates `progress.json` lastCheck timestamp.
 
-### Stage 4: /ship
+### Stage 4: /st-ship
 
-**When**: Feature complete and /check passes.
+**When**: Feature complete and /st-check passes.
 
 **Checklist**: repo state, full pipeline (strict), coverage, mutation testing, manual checklist, PR creation.
 
-### Stage 5: /retro
+### Stage 5: /st-retro
 
 **When**: End of work session.
 
@@ -146,15 +146,15 @@ Deprecated APIs, outdated approaches.
 
 ### T1 Auto
 **Scope**: UI, config, cosmetic, dep bumps.
-**Process**: /check passes → commit.
+**Process**: /st-check passes → commit.
 
 ### T2 Light
 **Scope**: New features, handlers, endpoints.
-**Process**: /check + quick review of contracts.
+**Process**: /st-check + quick review of contracts.
 
 ### T3 Deep
 **Scope**: Domain logic, security, billing, migrations.
-**Process**: /check + /mutate + manual review.
+**Process**: /st-check + /st-mutate + manual review.
 
 ## Clean Architecture Quick Reference
 
@@ -200,6 +200,6 @@ Domain depends on nothing.
 ## Mutation Testing
 
 **What**: Modify code automatically and check if tests catch it.
-**When**: /mutate on demand, or during /ship for T3 reviews.
+**When**: /st-mutate on demand, or during /st-ship for T3 reviews.
 **Target**: >80% kill rate on domain logic.
 **Tools**: Stryker (TS), mutmut (Python), go-mutesting (Go)

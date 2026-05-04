@@ -72,7 +72,7 @@ Proximo paso sugerido: [que hacer en la siguiente sesion]
 ```
 
 Si hay aggregates pendientes en progress.json, sugerir el primero:
-"Proximo: /spec para [Aggregate] en [BoundedContext]"
+"Proximo: /st-spec para [Aggregate] en [BoundedContext]"
 
 ## Reglas
 

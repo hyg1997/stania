@@ -75,7 +75,7 @@ Cuando el usuario aprueba:
 3. Si el aggregate existe en `.stania/progress.json`, actualizar specPath.
    Si no existe, agregarlo como "pending".
 
-Confirmar: "Spec guardada. Listo para /build."
+Confirmar: "Spec guardada. Listo para /st-build."
 
 ## Reglas
 

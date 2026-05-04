@@ -2,7 +2,7 @@ Extrae un modelo de dominio DDD y lo persiste en `.stania/domain-model.json` y `
 
 ## Cuando usar
 
-- Al iniciar un proyecto nuevo (despues de /bootstrap)
+- Al iniciar un proyecto nuevo (despues de /st-bootstrap)
 - Cuando agregas un nuevo dominio de negocio
 - Para refinar el modelo existente
 
