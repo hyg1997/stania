@@ -1,6 +1,6 @@
 {
   "name": "stania",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "AI engineering workflow for Claude Code. Contract-first, parallel development, autonomous agents.",
   "bin": {
     "stania": "./bin/stania.js"
