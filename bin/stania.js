@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const COMMANDS_DIR = path.join(__dirname, '..', 'commands');
 const SKILLS_DIR = path.join(__dirname, '..', 'skills');
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');

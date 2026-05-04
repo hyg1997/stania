@@ -8,7 +8,7 @@
 
 set -e
 
-VERSION="2.1.0"
+VERSION="2.2.0"
 REPO_URL="https://github.com/cloudpetals/stania"
 
 # Colors

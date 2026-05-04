@@ -1,148 +1,167 @@
-Genera componentes frontend desde un UI spec definido por el intern o por el tech lead.
-El intern define QUE (design, estados, eventos). El agente genera COMO (codigo limpio).
+Genera componentes frontend desde un UI spec estructurado.
+El frontend define QUE (layout + data + interactions). Claude genera COMO (codigo limpio, performant, accessible).
+
+## Inputs (leer siempre antes de generar)
+
+1. `.stania/ui-standards.md` — reglas de arquitectura y calidad (OBLIGATORIO)
+2. `.stania/layout-catalog.md` — catalogo de layouts predefinidos
+3. `.stania/ui-specs/<name>.md` — spec del componente a generar
+4. `packages/contracts/<contract>.ts` — tipos del contrato (si aplica)
+5. `packages/contracts/generated/client/` — API client generado
+
+Si `ui-standards.md` no existe: copiarlo de templates/ o crearlo con defaults.
+Si `layout-catalog.md` no existe: copiarlo de templates/.
 
 ## Uso
 
-- `/st-ui <component-name>` — Genera componente desde spec en `.stania/ui-specs/`
-- `/st-ui --interactive` — Guia al usuario para crear el UI spec y luego genera
-
-## Input: UI Spec
-
-El intern o tech lead crea `.stania/ui-specs/<component-name>.md`:
-
-```markdown
-## Component: [NombreComponente]
-
-**Type**: page | section | widget | modal | form
-**Route**: /path (si es page)
-**Contract**: [nombre del contrato que usa, si aplica]
-
-**Props**:
-  - prop1: tipo — descripcion
-  - prop2: tipo — descripcion
-
-**States**: idle → loading → success | error
-**Transitions**:
-  - idle + user clicks submit → loading
-  - loading + API success → success
-  - loading + API error → error
-  - error + user clicks retry → loading
-
-**Events**:
-  - onSubmit(data) → call API
-  - onCancel() → navigate back
-  - onRetry() → re-call API
-
-**Design**:
-  - [Descripcion visual: layout, colores, spacing]
-  - [Responsive: que cambia en mobile]
-
-**Components used**: Button, Card, Input (de shadcn/ui)
-```
+- `/st-ui <name>` — Genera desde spec existente en `.stania/ui-specs/<name>.md`
+- `/st-ui --new` — Crea spec interactivamente y luego genera
+- `/st-ui --list` — Muestra specs disponibles
 
 ## Proceso
 
-### 1. Leer spec
+### 1. Validar spec
 
+Leer `.stania/ui-specs/<name>.md`. Verificar campos obligatorios:
+- Layout (debe existir en catalogo)
+- Al menos 1 slot definido
+- States (4 estados obligatorios)
+- Contract referenciado existe (si tiene datos de API)
+
+Si falta algo → preguntar al frontend. NO generar con spec incompleto.
+
+### 2. Resolver layout
+
+Leer `.stania/layout-catalog.md` → extraer el layout referenciado:
+- Slots definidos para ese layout
+- Comportamiento responsive default
+- Tipo de componente (Server vs Client)
+
+Verificar que los slots del spec coinciden con los slots del layout.
+
+### 3. Resolver datos
+
+Si tiene Contract:
 ```bash
-cat .stania/ui-specs/<component-name>.md
+cat packages/contracts/<contract>.ts | tail -30
+cat packages/contracts/generated/client/<contract>.ts 2>/dev/null | tail -20
 ```
 
-Si no existe y es --interactive:
-- Preguntar: que componente quieres?
-- Guiar con preguntas sobre states, events, design
-- Crear el archivo .stania/ui-specs/<name>.md
-- Confirmar con el usuario antes de generar
+Extraer tipos de request/response. Usarlos para:
+- Props del componente
+- Return type del hook
+- Mock data en tests
 
-### 2. Leer contrato relacionado
+### 4. Generar estructura
 
-Si el UI spec referencia un contrato:
-```bash
-cat packages/contracts/<contract-name>.ts
-cat packages/contracts/generated/client/<contract-name>.ts
+```
+features/<feature>/
+├── components/
+│   ├── <name>.tsx              ← Server Component (RSC) si layout lo indica
+│   ├── <name>.client.tsx       ← Client islands (solo partes interactivas)
+│   ├── <name>.skeleton.tsx     ← Loading state (matches layout dimensions)
+│   └── <name>.error.tsx        ← Error boundary fallback
+├── hooks/
+│   └── use-<resource>.ts      ← TanStack Query hook con tipos del contract
+├── lib/
+│   └── <name>.utils.ts        ← Pure functions (formatters, validators)
+└── __tests__/
+    └── <name>.test.tsx        ← Testing Library + axe-core
 ```
 
-Usar los tipos reales del contrato para props y API calls.
+### 5. Reglas de generacion (enforced por ui-standards.md)
 
-### 3. Generar componente
+**Server vs Client split:**
+- Layout, data fetching, static content → Server Component
+- Event handlers, hover effects, form inputs → Client Component
+- Client boundary pushed as deep as possible (leaf nodes)
 
-Crear estructura:
-```
-apps/web/src/components/<name>/
-├── <Name>.tsx              ← Componente principal (presentational)
-├── <Name>.container.tsx    ← Logic + API connection (si tiene state machine)
-├── <Name>.test.tsx         ← Tests de interaccion
-└── <Name>.stories.tsx      ← Storybook story
-```
+**Responsive (del layout catalog):**
+- Generar usando el responsive behavior del catalogo
+- Si spec tiene "responsive override" → aplicar override
+- Mobile-first: base styles = mobile, `sm:` `md:` `lg:` para breakpoints
 
-**Reglas de generacion:**
-- Server Component por defecto. `"use client"` solo si tiene interactividad.
-- Tailwind CSS para styling. No CSS modules, no styled-components.
-- shadcn/ui components donde aplique (Button, Card, Input, Dialog, etc.)
-- State machine explicita si hay multiples estados (no useState spaghetti)
-- Zod para validacion de forms
-- API client importado de `packages/contracts/generated/client/`
-- React Hook Form para forms
-- Error boundaries para error states
-- Loading skeletons (no spinners genericos)
+**States (siempre los 4):**
+- loading → `.skeleton.tsx` que replica dimensiones del layout final
+- empty → mensaje contextual + CTA primario
+- error → `.error.tsx` con descripcion + retry
+- success → componente principal
 
-### 4. Generar Storybook story
+**Accessibility (de ui-standards.md):**
+- Semantic HTML (no divs para todo)
+- ARIA solo si HTML semantico no alcanza
+- Focus management en modals/drawers
+- Keyboard nav para todo lo interactivo
+
+**Performance:**
+- Dynamic import para charts, editors, heavy components
+- next/image para toda imagen
+- Suspense boundary en cada async component
+- No layout shift (skeleton = mismas dimensiones)
+
+### 6. Generar tests
 
 ```typescript
-import type { Meta, StoryObj } from '@storybook/react';
-import { [Name] } from './[Name]';
+import { render, screen } from '@testing-library/react';
+import { axe } from 'vitest-axe';
+import { ComponentName } from '../components/component-name';
 
-const meta: Meta<typeof [Name]> = {
-  component: [Name],
-  // args con datos realistas
-};
-
-export default meta;
-type Story = StoryObj<typeof [Name]>;
-
-export const Default: Story = { args: { /* props default */ } };
-export const Loading: Story = { args: { /* estado loading */ } };
-export const Error: Story = { args: { /* estado error */ } };
-export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
-};
+describe('ComponentName', () => {
+  it('renders success state', () => { /* render with data → assert visible content */ });
+  it('renders loading state', () => { /* render with loading → assert skeleton */ });
+  it('renders empty state', () => { /* render with no data → assert CTA */ });
+  it('renders error state', () => { /* render with error → assert retry button */ });
+  it('handles [main interaction]', () => { /* user event → assert result */ });
+  it('has no accessibility violations', async () => {
+    const { container } = render(<ComponentName {...defaultProps} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
 ```
 
-### 5. Verificar
+### 7. Verificar
 
 ```bash
-pnpm typecheck 2>&1 | tail -5
+pnpm typecheck --filter web 2>&1 | tail -5
+pnpm test --filter web -- --testPathPattern="<name>" --bail 2>&1 | tail -10
 ```
 
-### 6. Commit
+### 8. Commit
 
 ```bash
-git add apps/web/src/components/<name>/
-git commit -m "ui(<name>): implement component from UI spec"
+git add features/<feature>/
+git commit -m "ui(<name>): implement from spec [<layout>]"
 ```
 
-Si es para PR (intern creando):
-```bash
-git push -u origin ui/<name>
-gh pr create --title "ui(<name>): [titulo]" --label "frontend,ready-to-review"
-```
+## Modo --new (interactivo)
 
-## Modo interactivo (para interns sin experiencia)
+Guiar al frontend con preguntas cerradas:
 
-Si el intern no sabe que escribir en el UI spec, guiar con:
+1. "Nombre del componente?" → slug
+2. "Tipo: page, section, widget, o modal?"
+3. "Que layout?" → mostrar nombres del catalogo con 1 linea descriptiva:
+   - LIST — tabla/lista con filtros y acciones
+   - DETAIL — vista de un recurso con tabs
+   - FORM — formulario (single o wizard)
+   - DASHBOARD — metricas con KPIs y charts
+   - GRID — grid de cards (productos, galeria)
+   - SIDEBAR — nav lateral + contenido
+   - MODAL — overlay (confirmacion, quick-create)
+   - SPLIT — dos paneles (chat, master-detail)
+4. "Que datos usa? (nombre del contrato, o 'ninguno')"
+5. "Que puede hacer el usuario?" → interactions (lista libre)
+6. "Algo especial visualmente?" → design notes
 
-1. "Que hace este componente en una oracion?"
-2. "Que datos muestra?" (mapear a props)
-3. "Que puede hacer el usuario?" (mapear a events)
-4. "Que pasa cuando falla?" (mapear a error state)
-5. "Es un formulario, una lista, un dashboard, o un wizard?"
-
-Generar el UI spec y mostrarlo para aprobacion antes de generar codigo.
+Generar spec → mostrar al frontend → confirmar → generar codigo.
 
 ## Reglas
 
-- El intern NUNCA necesita escribir codigo — solo el spec
-- Si falta contrato para los datos → "Primero /st-contract <name>"
-- No generar componentes que dependan de APIs sin mock → verificar que el mock existe
-- Storybook stories SIEMPRE — el intern valida visualmente ahi
-- Mobile-first: generar siempre la variante responsive
+- NUNCA generar sin leer ui-standards.md primero
+- NUNCA generar si spec esta incompleto (preguntar)
+- NUNCA `any` en tipos — usar contract types o definir interface
+- NUNCA snapshot tests
+- SIEMPRE los 4 estados (loading, empty, error, success)
+- SIEMPRE accessibility test con axe
+- SIEMPRE responsive (mobile-first desde layout catalog)
+- Si falta contrato → "Primero /st-contract <name>"
+- Si falta mock → verificar que MSW handler existe

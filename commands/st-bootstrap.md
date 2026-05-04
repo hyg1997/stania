@@ -94,6 +94,14 @@ Crear `.stania/config.json`:
 }
 ```
 
+Copiar UI templates a `.stania/`:
+- `.stania/ui-standards.md` ← desde templates/ui-standards.md (o inline)
+- `.stania/layout-catalog.md` ← desde templates/layout-catalog.md (o inline)
+- `.stania/ui-specs/` ← crear directorio vacío
+
+Crear `.stania/ui-specs/_TEMPLATE.md` desde templates/ui-spec-template.md.
+El frontend copia este template para cada nuevo componente.
+
 ## Paso 5: Montar estructura
 
 ### Si es monorepo (frontend + backend separado):
@@ -163,6 +171,8 @@ Instalar dependencias base:
 ```bash
 pnpm add -D typescript @types/node vitest @biomejs/biome turbo
 pnpm add -D msw @storybook/react --filter web
+pnpm add -D @testing-library/react @testing-library/user-event vitest-axe --filter web
+pnpm add -D @tanstack/react-query --filter web
 pnpm add zod --filter web --filter api
 ```
 
@@ -184,6 +194,41 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test --bail
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build --filter web
+      - uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+```
+
+Crear `lighthouserc.json` en la raiz:
+```json
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "pnpm --filter web start",
+      "url": ["http://localhost:3000"],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "categories:accessibility": ["error", { "minScore": 0.95 }],
+        "categories:best-practices": ["error", { "minScore": 0.9 }]
+      }
+    }
+  }
+}
 ```
 
 Crear `.github/workflows/deploy.yml`:
