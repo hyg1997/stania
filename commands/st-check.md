@@ -1,35 +1,43 @@
 Pipeline de validacion + hardening. Etapa 3 del pipeline.
 Corre despues de /st-build o antes de commit. Actualiza `.stania/progress.json` con resultado.
 
-## Fase 1: Validacion automatizada
+## Fase 1: Validacion automatizada (PARALELA)
 
-Detectar stack (de `.stania/config.json` o del filesystem) y correr:
+Detectar stack (de `.stania/config.json` o del filesystem).
+Leer `.stania/config.json` campo `testFlags` si existe para override de flags.
+
+**Correr typecheck, lint, y tests en PARALELO** (3 tool calls simultaneos).
+Truncar output siempre — solo leer ultimas lineas para evitar context explosion.
 
 ### TypeScript
 ```bash
-pnpm typecheck 2>&1      # tsc --strict --noEmit
-pnpm lint 2>&1            # Biome check
-pnpm test 2>&1            # Vitest
+# En paralelo:
+pnpm typecheck 2>&1 | tail -5
+pnpm lint 2>&1 | tail -5
+pnpm test --bail --reporter=dot 2>&1 | tail -10
 ```
 
 ### Python
 ```bash
-mypy . 2>&1               # Type checking
-ruff check . 2>&1         # Lint
-pytest 2>&1               # Tests
+# En paralelo:
+mypy . 2>&1 | tail -5
+ruff check . 2>&1 | tail -5
+pytest -x -q 2>&1 | tail -10
 ```
 
 ### Go
 ```bash
-go vet ./... 2>&1
-golangci-lint run 2>&1
-go test ./... 2>&1
+# En paralelo:
+go vet ./... 2>&1 | tail -5
+golangci-lint run 2>&1 | tail -5
+go test ./... -count=1 -short 2>&1 | tail -10
 ```
 
 ### Rust
 ```bash
-cargo clippy 2>&1
-cargo test 2>&1
+# En paralelo:
+cargo clippy 2>&1 | tail -5
+cargo test 2>&1 | tail -10
 ```
 
 Si no hay scripts configurados, inferir del package.json / pyproject.toml.
@@ -42,53 +50,41 @@ Lint:       WARN (2 warnings, non-blocking)
 Tests:      PASS (14 passed, 0 failed)
 ```
 
-Si hay errores → arreglar automaticamente y re-correr.
+Si hay errores → leer output completo SOLO del paso fallido, arreglar y re-correr.
 Si no puede arreglar → reportar al usuario con contexto.
+Maximo 2 intentos de autofix por paso.
 
 ## Fase 2: Hardening
 
 ### 2.1 Architecture enforcement
 
-Verificar que las capas no se violan:
+Solo si architecture = "clean". Saltar para mvc/simple.
 
 ```bash
 # Domain no debe importar de infrastructure o application
 grep -rn "from.*infrastructure" src/domain/ apps/*/src/domain/ 2>/dev/null
 grep -rn "from.*application" src/domain/ apps/*/src/domain/ 2>/dev/null
-
-# Application no debe importar de infrastructure directamente
-grep -rn "from.*infrastructure" src/application/ apps/*/src/application/ 2>/dev/null
 ```
-
-Adaptar paths al proyecto. Si no usa Clean Architecture, saltar.
 
 ### 2.2 AI Code Smells
 
-Revisar archivos modificados (git diff --name-only):
+Revisar SOLO archivos modificados (git diff --name-only HEAD~1):
 
-1. **API Hallucination**: metodos de librerias externas existen realmente?
-   Si hay duda, buscar en node_modules o tipos.
+1. **API Hallucination**: Si hay Context7 MCP disponible, verificar metodos
+   contra documentacion real. Si no, buscar en node_modules/tipos.
 2. **Happy Path Bias**: hay manejo para cada error del Result?
-   Hay fallback si un servicio externo falla?
 3. **Invisible Coupling**: domain importa algo que no deberia?
 4. **Security Blindness**: datos de usuario sin sanitizar? PII en logs?
-   Endpoints sin auth?
-5. **Test Theater**: los tests verifican RESULTADO correcto,
-   no solo que "no tira error"? Hay assertions reales?
-6. **Over-engineering**: abstracciones que solo tienen una implementacion
-   y no la necesitan todavia?
-7. **Context Amnesia**: patrones inconsistentes entre modulos?
-8. **Stale Patterns**: APIs deprecated? Metodos obsoletos?
+5. **Test Theater**: los tests verifican RESULTADO, no solo "no tira error"?
+6. **Over-engineering**: abstracciones con una sola implementacion?
+7. **Context Amnesia**: patrones inconsistentes?
+8. **Stale Patterns**: APIs deprecated?
 
 ### 2.3 Security quick scan
 
 ```bash
-# Secrets en codigo
-grep -rn "sk-\|api_key\|password\s*=\s*[\"']" --include="*.ts" --include="*.py" --include="*.env" . 2>/dev/null
-
-# Dependencias con vulnerabilidades (si la herramienta existe)
-pnpm audit 2>/dev/null || npm audit 2>/dev/null
-pip audit 2>/dev/null
+grep -rn "sk-\|api_key\|password\s*=\s*[\"']" --include="*.ts" --include="*.py" --include="*.env" . 2>/dev/null | head -5
+pnpm audit --json 2>/dev/null | tail -3 || pip audit 2>/dev/null | tail -3
 ```
 
 No fallar si la herramienta no esta instalada — reportar como "skipped".
@@ -124,3 +120,10 @@ Si `.stania/progress.json` existe, actualizar lastCheck de los aggregates afecta
 - **PASS** → "Listo para commit. Queres que commitee?"
 - **WARN** → mostrar findings, preguntar si procede o arregla
 - **FAIL** → arreglar automaticamente si puede, sino reportar
+
+## Session splitting
+
+Si el contexto de la conversacion ya tiene mucho output acumulado
+(por ejemplo, despues de /st-build con multiples iteraciones):
+Sugerir al usuario: "La sesion tiene mucho contexto acumulado. Quieres
+que haga el commit y continues en una nueva sesion con /st-ship?"

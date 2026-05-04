@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # Stania — From vibe coding to production-ready engineering
-# Install: curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
-# Usage:   bash install.sh [--minimal] [--dry-run] [--uninstall]
+# Install per-project (default): bash install.sh
+# Install globally:              bash install.sh --global
+# Uninstall:                     bash install.sh --uninstall [--global]
+# Remote:                        curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
 
 set -e
 
-VERSION="2.0.0"
+VERSION="2.1.0"
 REPO_URL="https://github.com/cloudpetals/stania"
 
 # Colors
@@ -20,14 +22,14 @@ NC='\033[0m'
 
 # Flags
 DRY_RUN=false
-MINIMAL=false
+GLOBAL=false
 UNINSTALL=false
 STANIA_DIR=""
 
 for arg in "$@"; do
     case $arg in
         --dry-run)   DRY_RUN=true ;;
-        --minimal)   MINIMAL=true ;;
+        --global)    GLOBAL=true ;;
         --uninstall) UNINSTALL=true ;;
     esac
 done
@@ -62,22 +64,36 @@ fi
 
 echo ""
 
-# --- Claude Code ---
+# --- Determine target directories ---
 
-CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-CLAUDE_CMD_DIR="$CLAUDE_CONFIG_DIR/commands"
-CLAUDE_SKILLS_DIR="$CLAUDE_CONFIG_DIR/skills"
+if [ "$GLOBAL" = true ]; then
+    CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+    TARGET_CMD_DIR="$CLAUDE_CONFIG_DIR/commands"
+    TARGET_SKILLS_DIR="$CLAUDE_CONFIG_DIR/skills"
+    INSTALL_LABEL="global (~/.claude/)"
+else
+    # Per-project: install to .claude/ in current working directory
+    PROJECT_DIR="$(pwd)"
+    TARGET_CMD_DIR="$PROJECT_DIR/.claude/commands"
+    TARGET_SKILLS_DIR="$PROJECT_DIR/.claude/skills"
+    INSTALL_LABEL="project ($PROJECT_DIR/.claude/)"
+fi
+
+echo -e "  ${DIM}Target: ${INSTALL_LABEL}${NC}"
+echo ""
+
+# --- Claude Code detection ---
 
 detect_claude_code() {
     command -v claude &>/dev/null && return 0
-    [ -d "$CLAUDE_CONFIG_DIR" ] && return 0
+    [ -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" ] && return 0
     return 1
 }
 
 if detect_claude_code; then
     echo -e "  ${GREEN}✓${NC} Claude Code detected"
 else
-    echo -e "  ${YELLOW}!${NC} Claude Code not detected (installing anyway to ${CLAUDE_CMD_DIR})"
+    echo -e "  ${YELLOW}!${NC} Claude Code not detected (installing anyway)"
 fi
 
 # --- Uninstall ---
@@ -86,7 +102,7 @@ if [ "$UNINSTALL" = true ]; then
     echo ""
     REMOVED=0
     for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
-        target="$CLAUDE_CMD_DIR/${cmd}.md"
+        target="$TARGET_CMD_DIR/${cmd}.md"
         if [ -f "$target" ]; then
             if [ "$DRY_RUN" = true ]; then
                 echo -e "  ${YELLOW}[dry-run]${NC} Would remove /${cmd}"
@@ -99,12 +115,22 @@ if [ "$UNINSTALL" = true ]; then
     done
 
     # Remove skill
-    if [ -d "$CLAUDE_SKILLS_DIR/st" ]; then
+    if [ -d "$TARGET_SKILLS_DIR/st" ]; then
         if [ "$DRY_RUN" = true ]; then
             echo -e "  ${YELLOW}[dry-run]${NC} Would remove skill: st"
         else
-            rm -rf "$CLAUDE_SKILLS_DIR/st"
+            rm -rf "$TARGET_SKILLS_DIR/st"
             echo -e "  ${RED}-${NC}  Removed: skill st"
+        fi
+    fi
+
+    # Remove project settings if per-project
+    if [ "$GLOBAL" = false ] && [ -f "$PROJECT_DIR/.claude/settings.json" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            echo -e "  ${YELLOW}[dry-run]${NC} Would remove .claude/settings.json"
+        else
+            rm "$PROJECT_DIR/.claude/settings.json"
+            echo -e "  ${RED}-${NC}  Removed: .claude/settings.json"
         fi
     fi
 
@@ -120,7 +146,7 @@ echo ""
 echo -e "  ${BOLD}Installing commands...${NC}"
 
 if [ "$DRY_RUN" = false ]; then
-    mkdir -p "$CLAUDE_CMD_DIR"
+    mkdir -p "$TARGET_CMD_DIR"
 fi
 
 NEW=0
@@ -131,7 +157,7 @@ for cmd in "$STANIA_DIR/commands/"*.md; do
     [ -f "$cmd" ] || continue
     filename=$(basename "$cmd")
     name=$(basename "$filename" .md)
-    target="$CLAUDE_CMD_DIR/$filename"
+    target="$TARGET_CMD_DIR/$filename"
 
     if [ "$DRY_RUN" = true ]; then
         if [ -f "$target" ]; then
@@ -157,16 +183,91 @@ done
 
 # --- Install Skill ---
 
-if [ "$MINIMAL" = false ] && [ -d "$STANIA_DIR/skills/st" ]; then
+if [ -d "$STANIA_DIR/skills/st" ]; then
     echo ""
     echo -e "  ${BOLD}Installing skill...${NC}"
 
     if [ "$DRY_RUN" = true ]; then
         echo -e "  ${YELLOW}[dry-run]${NC} Would install skill: st"
     else
-        mkdir -p "$CLAUDE_SKILLS_DIR/st"
-        cp "$STANIA_DIR/skills/st/SKILL.md" "$CLAUDE_SKILLS_DIR/st/SKILL.md"
+        mkdir -p "$TARGET_SKILLS_DIR/st"
+        cp "$STANIA_DIR/skills/st/SKILL.md" "$TARGET_SKILLS_DIR/st/SKILL.md"
         echo -e "  ${GREEN}+${NC}  Installed: skill st"
+    fi
+fi
+
+# --- Install project settings (per-project only) ---
+
+if [ "$GLOBAL" = false ]; then
+    SETTINGS_FILE="$PROJECT_DIR/.claude/settings.json"
+    if [ ! -f "$SETTINGS_FILE" ]; then
+        echo ""
+        echo -e "  ${BOLD}Creating project settings...${NC}"
+
+        if [ "$DRY_RUN" = true ]; then
+            echo -e "  ${YELLOW}[dry-run]${NC} Would create .claude/settings.json"
+        else
+            mkdir -p "$PROJECT_DIR/.claude"
+            cp "$STANIA_DIR/templates/settings.json" "$SETTINGS_FILE" 2>/dev/null || \
+            cat > "$SETTINGS_FILE" << 'SETTINGS'
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(pnpm:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(yarn:*)",
+      "Bash(uv:*)",
+      "Bash(pip:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m mypy:*)",
+      "Bash(go:*)",
+      "Bash(cargo:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
+SETTINGS
+            echo -e "  ${GREEN}+${NC}  Created: .claude/settings.json (lean permissions)"
+        fi
+    else
+        echo ""
+        echo -e "  ${DIM}  Skipped: .claude/settings.json (already exists)${NC}"
+    fi
+fi
+
+# --- Remove global installation if installing per-project ---
+
+if [ "$GLOBAL" = false ]; then
+    GLOBAL_CMD_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/commands"
+    GLOBAL_SKILLS_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
+    FOUND_GLOBAL=false
+
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
+        if [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ]; then
+            FOUND_GLOBAL=true
+            break
+        fi
+    done
+
+    if [ "$FOUND_GLOBAL" = true ]; then
+        echo ""
+        echo -e "  ${YELLOW}!${NC} Found global Stania installation (~/.claude/)"
+        echo -e "  ${DIM}  Global install loads skill into ALL conversations (~1,800 tokens wasted)${NC}"
+        echo ""
+        read -p "    Remove global installation? [Y/n] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
+                [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ] && rm "$GLOBAL_CMD_DIR/${cmd}.md"
+            done
+            [ -d "$GLOBAL_SKILLS_DIR/st" ] && rm -rf "$GLOBAL_SKILLS_DIR/st"
+            echo -e "  ${GREEN}✓${NC} Global installation removed"
+        fi
     fi
 fi
 
@@ -176,18 +277,27 @@ echo ""
 echo -e "  ${BOLD}${GREEN}Done.${NC} ${NEW} new, ${UPDATED} updated, ${UNCHANGED} unchanged"
 echo ""
 echo -e "  ${BOLD}Pipeline commands:${NC}"
-echo -e "    ${GREEN}/st-bootstrap${NC}  From idea to configured project + .stania/ init"
-echo -e "    ${GREEN}/st-spec${NC}       Write spec before coding (saved to .stania/specs/)"
-echo -e "    ${GREEN}/st-build${NC}      Controlled generation (domain first, progress tracked)"
-echo -e "    ${GREEN}/st-check${NC}      Validate + harden + AI code smells"
+echo -e "    ${GREEN}/st-bootstrap${NC}  Project setup + .stania/ init"
+echo -e "    ${GREEN}/st-spec${NC}       Write spec before coding"
+echo -e "    ${GREEN}/st-build${NC}      Controlled generation (domain first)"
+echo -e "    ${GREEN}/st-check${NC}      Validate + harden"
 echo -e "    ${GREEN}/st-ship${NC}       Pre-deploy audit + PR"
-echo -e "    ${GREEN}/st-retro${NC}      Session close + capture decisions"
+echo -e "    ${GREEN}/st-retro${NC}      Session close"
 echo ""
 echo -e "  ${BOLD}Extra:${NC}"
-echo -e "    ${BLUE}/st-mutate${NC}     Mutation testing (on demand)"
-echo -e "    ${BLUE}/st-model${NC}      Extract DDD domain model → .stania/domain-model.json"
-echo -e "    ${BLUE}/st-status${NC}     Implementation progress (reads .stania/progress.json)"
+echo -e "    ${BLUE}/st-mutate${NC}     Mutation testing"
+echo -e "    ${BLUE}/st-model${NC}      DDD domain model"
+echo -e "    ${BLUE}/st-status${NC}     Progress report"
 echo ""
-echo -e "  ${DIM}State: .stania/ in each project (cross-session continuity)${NC}"
-echo -e "  ${DIM}Docs: ${REPO_URL}${NC}"
+
+if [ "$GLOBAL" = false ]; then
+    echo -e "  ${BOLD}Token savings vs global install:${NC}"
+    echo -e "    ${GREEN}~52,000 tokens/turn${NC} saved (skill not loaded in other projects)"
+    echo ""
+    echo -e "  ${DIM}Installed per-project. Only active in this directory.${NC}"
+    echo -e "  ${DIM}To install globally: bash install.sh --global${NC}"
+else
+    echo -e "  ${YELLOW}⚠${NC}  Global install: skill loads in ALL conversations (~1,800 tokens/turn)"
+    echo -e "  ${DIM}Consider per-project install for token efficiency.${NC}"
+fi
 echo ""

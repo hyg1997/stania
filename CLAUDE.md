@@ -8,40 +8,67 @@ cross-session state tracking.
 
 ```
 stania/
-├── commands/              ← Slash commands (copied to ~/.claude/commands/)
+├── commands/              ← Slash commands (per-project: .claude/commands/)
 │   ├── st-bootstrap.md    ← /st-bootstrap: project setup + .stania/ init
 │   ├── st-spec.md         ← /st-spec: formal spec, saved to .stania/specs/
-│   ��── st-build.md        ← /st-build: controlled generation with progress tracking
+│   ├── st-build.md        ← /st-build: controlled generation with progress tracking
 │   ├── st-check.md        ← /st-check: validate + harden
 │   ├── st-ship.md         ← /st-ship: pre-deploy audit
 │   ├── st-retro.md        ← /st-retro: session close
 │   ├── st-mutate.md       ← /st-mutate: mutation testing
 │   ├── st-model.md        ← /st-model: DDD domain model → .stania/domain-model.json
 │   └── st-status.md       ← /st-status: progress from .stania/progress.json
-├── skills/st/             ← Skill definition (auto-loaded by Claude Code)
-│   └── SKILL.md           ← Core behavior rules, state schemas, pipeline spec
-├── hooks/             ← Claude Code hooks (optional)
-├── docs/              ← Workflow documentation
-│   └── workflow.md    ← Full engineering workflow reference
-├── install.sh         ← One-line installer
-├── README.md          ← Public README
-├── LICENSE            ← MIT
-└── CLAUDE.md          ← This file
+├── skills/st/             ← Skill definition (per-project: .claude/skills/st/)
+│   └── SKILL.md           ← Core behavior rules, pipeline spec
+├── templates/             ← Project templates
+│   └── settings.json      ← Lean permissions for Stania projects
+├── docs/                  ← Workflow documentation
+│   └── workflow.md        ← Full engineering workflow reference
+├── install.sh             ← Per-project installer (default)
+├── uninstall-global.sh    ← Remove global installation
+├── README.md              ← Public README
+├── LICENSE                ← MIT
+└── CLAUDE.md              ← This file
+```
+
+## Installation Modes
+
+### Per-project (default, recommended)
+```bash
+bash install.sh          # Installs to .claude/ in current project
+```
+- Skill only loads when working in this project
+- Saves ~52K tokens/turn in other projects
+- Creates .claude/settings.json with lean permissions
+
+### Global (not recommended)
+```bash
+bash install.sh --global  # Installs to ~/.claude/
+```
+- Skill loads in EVERY conversation (~1,800 tokens overhead always)
+
+### Uninstall
+```bash
+bash install.sh --uninstall          # Remove from current project
+bash install.sh --uninstall --global # Remove from global
+bash uninstall-global.sh             # Quick global removal
 ```
 
 ## Source of Truth
 
-- `skills/st/SKILL.md` — Core behavior: pipeline stages, state schemas, AI code smells, review tiers
-- `commands/*.md` — Individual command implementations
+- `skills/st/SKILL.md` — Core behavior: pipeline stages, AI code smells, review tiers, token rules
+- `commands/*.md` — Individual command implementations (including /st-quick for fast path)
 - `docs/workflow.md` — Detailed workflow reference with examples
 
 ## Key Design Principles
 
-1. **State is advisory, not blocking**: Commands work without `.stania/`. State enhances cross-session continuity but never gates functionality.
-2. **No external runtime**: Claude Code reads/writes JSON directly. No Node.js, no dependencies, no build step.
-3. **Stack-agnostic**: Detect and adapt, don't assume. Works with TypeScript, Python, Go, Rust.
-4. **Graceful degradation**: If a tool isn't installed (stryker, semgrep), skip and report — don't fail.
-5. **Idempotent**: install.sh and /st-bootstrap are safe to re-run.
+1. **Per-project by default**: Install only where needed. Never pollute global context.
+2. **State is advisory, not blocking**: Commands work without `.stania/`. State enhances cross-session continuity but never gates functionality.
+3. **No external runtime**: Claude Code reads/writes JSON directly. No Node.js, no dependencies, no build step.
+4. **Stack-agnostic**: Detect and adapt, don't assume. Works with TypeScript, Python, Go, Rust.
+5. **Graceful degradation**: If a tool isn't installed (stryker, semgrep), skip and report — don't fail.
+6. **Token-conscious**: SKILL.md is compressed (~3.5K chars). Schemas referenced, not inlined.
+7. **Idempotent**: install.sh and /st-bootstrap are safe to re-run.
 
 ## Development Rules
 
@@ -50,4 +77,5 @@ stania/
 - Every command must work in an empty project and in an existing one
 - Every command must work with AND without `.stania/` directory
 - install.sh must be idempotent (safe to re-run)
+- SKILL.md must stay under 4KB — reference schemas instead of inlining them
 - Test changes by running install.sh then using commands in a real project

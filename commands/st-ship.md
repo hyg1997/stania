@@ -14,32 +14,34 @@ Reportar:
 - Archivos modificados
 - Hay cambios sin commitear?
 
-## Paso 2: Pipeline completo
+## Paso 2: Validacion (incremental)
 
-Correr todo lo de /st-check pero mas estricto:
+Leer `.stania/progress.json` → lastCheck timestamp.
+Si lastCheck < 10 minutos → skip pipeline, reportar "Validated recently, skipping re-run."
+Si lastCheck > 10 minutos o no existe → correr pipeline completo:
 
-### Validacion
-- Typecheck (zero errors, zero warnings)
-- Lint (zero errors, warnings aceptables solo si son pre-existentes)
-- ALL tests (run completo, no watch)
-- Build (debe compilar sin errores)
-
-### Hardening
-- Architecture enforcement
-- AI Code Smells (todos los archivos modificados, no solo sesion)
-- Security scan completo
-- Dependency audit
-
-### Coverage
+### Solo si necesita re-validar:
 ```bash
-pnpm test -- --coverage  # o equivalente
+# Validacion estricta
+pnpm typecheck 2>&1 | tail -5
+pnpm lint 2>&1 | tail -5
+pnpm test --bail 2>&1 | tail -10
+pnpm build 2>&1 | tail -5
+
+# Coverage
+pnpm test -- --coverage 2>&1 | grep -E "^(All files|Statements|Branches|Functions|Lines)" | head -5
 ```
-Reportar coverage por capa:
+
+Reportar coverage vs targets de `.stania/config.json` (hardening.coverageTarget):
 - Domain: target >80%
 - Application: target >60%
 - Overall: target >60%
 
-Leer targets de `.stania/config.json` si existe (hardening.coverageTarget).
+### Hardening (siempre correr):
+- Architecture enforcement (solo archivos en el diff)
+- AI Code Smells (archivos modificados desde main)
+- Security: `grep -rn "sk-\|api_key\|password\s*=" --include="*.ts" --include="*.py" . 2>/dev/null | head -5`
+- Dependency audit: `pnpm audit 2>/dev/null | tail -5`
 
 ## Paso 3: Mutation testing (si aplica)
 

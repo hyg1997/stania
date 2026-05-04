@@ -60,9 +60,16 @@ Crear `.stania/config.json`:
     "mutationThreshold": 80,
     "coverageTarget": { "domain": 80, "application": 60, "overall": 60 }
   },
+  "testFlags": {
+    "fast": "--bail --reporter=dot",
+    "full": "--coverage"
+  },
   "createdAt": "[ISO8601]"
 }
 ```
+
+El campo `testFlags` permite que /st-check y /st-quick usen flags optimizados
+sin recalcularlos cada vez. Adaptar segun el test runner detectado.
 
 Crear `.stania/progress.json`:
 ```json

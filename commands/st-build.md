@@ -6,8 +6,11 @@ Requiere spec aprobada. Actualiza `.stania/progress.json` al completar cada capa
 Verificar:
 1. Existe spec aprobada? Buscar en `.stania/specs/` o preguntar: "Corro /st-spec primero?"
 2. Leer `.stania/config.json` para stack y arquitectura
-3. Leer `.stania/domain-model.json` para contexto del dominio
-4. Leer la spec relevante
+
+**Lazy loading** (no leer todo al inicio):
+3. Leer `.stania/domain-model.json` SOLO el bounded context afectado, no el modelo entero.
+   Si el modelo es grande, filtrar: leer, extraer el aggregate relevante, descartar el resto.
+4. Leer la spec relevante (solo el archivo de la feature, no todas las specs)
 
 Si no hay spec y la tarea es trivial (fix, config): proceder sin spec.
 Si toca domain: spec obligatoria.
@@ -85,24 +88,30 @@ Al aprobar:
 
 ## Post-generacion
 
-Correr automaticamente:
-1. Typecheck (tsc / mypy)
-2. Lint (biome / ruff)
-3. Tests (vitest / pytest)
+NO correr validacion completa aqui — eso es trabajo de /st-check.
+Solo verificar que compila (typecheck basico) para no entregar codigo roto.
 
-Si algo falla → arreglar antes de reportar.
+```bash
+# Solo typecheck rapido — lint y tests van en /st-check
+pnpm typecheck 2>&1 | tail -5   # TS
+mypy . 2>&1 | tail -5           # Python
+go vet ./... 2>&1 | tail -5     # Go
+```
+
+Si typecheck falla → arreglar antes de reportar.
 
 Reportar:
 - Archivos creados/modificados
-- Tests: X passing, 0 failing
-- "Listo para /st-check o commit"
+- "Listo para /st-check"
 
-## Sin modelo DDD
+## Sin modelo DDD (architecture = "mvc" o "simple")
 
 Si `config.architecture !== "clean"`:
-- Saltar separacion en capas
-- Generar codigo segun la spec
-- Correr tests y validacion
+- NO separar en capas, NO pedir approval por capa
+- Generar codigo completo segun la spec en un solo paso
+- Generar tests junto al codigo
+- Verificar typecheck basico
+- Presentar al usuario una sola vez para aprobacion
 - Actualizar progress.json
 
 ## Reglas de estado

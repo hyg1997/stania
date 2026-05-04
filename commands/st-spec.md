@@ -17,7 +17,9 @@ Pregunta al usuario si no esta claro:
 
 ### 2. Escribir la spec
 
-Formato obligatorio:
+Leer `.stania/config.json` → campo `architecture`.
+
+#### Si architecture = "clean" (DDD):
 
 ```markdown
 ## Feature: [nombre descriptivo]
@@ -35,21 +37,39 @@ Formato obligatorio:
 
 **Errores posibles**:
   - [ErrorName]: cuando [condicion]
-  - [ErrorName]: cuando [condicion]
 
 **Edge cases**:
-  - Que pasa si [caso]?
   - Que pasa si [caso concurrente]?
 
 **Dependencias**: [ports/interfaces que necesita]
 
 **Tests criticos**:
   - [caso que debe tener test obligatorio]
-  - [caso que debe tener test obligatorio]
 ```
 
 Si el aggregate existe en `.stania/domain-model.json`, usar los invariantes,
-eventos y ports definidos ahi como base. Agregar los especificos de esta feature.
+eventos y ports definidos ahi como base.
+
+#### Si architecture = "mvc" o "simple":
+
+```markdown
+## Feature: [nombre descriptivo]
+
+**Scope**: [que modulos/archivos afecta]
+**Input**: [tipo y campos]
+**Output**: [tipo]
+
+**Reglas**:
+  1. [regla de negocio]
+
+**Errores posibles**:
+  - [ErrorName]: cuando [condicion]
+
+**Tests criticos**:
+  - [caso]
+```
+
+No forzar bounded context ni aggregate si el proyecto no usa DDD.
 
 ### 3. Validar la spec
 
