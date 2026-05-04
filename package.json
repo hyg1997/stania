@@ -1,0 +1,32 @@
+{
+  "name": "stania",
+  "version": "2.1.0",
+  "description": "AI engineering workflow for Claude Code. Contract-first, parallel development, autonomous agents.",
+  "bin": {
+    "stania": "./bin/stania.js"
+  },
+  "keywords": [
+    "claude-code",
+    "ai-engineering",
+    "workflow",
+    "ddd",
+    "clean-architecture",
+    "contract-first"
+  ],
+  "author": "Cloudpetals SAC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cloudpetals/stania.git"
+  },
+  "files": [
+    "bin/",
+    "commands/",
+    "skills/",
+    "templates/",
+    "docs/"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
