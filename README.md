@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/stania?style=flat-square&color=000" alt="npm version" />
   <img src="https://img.shields.io/npm/dm/stania?style=flat-square&color=000" alt="downloads" />
-  <img src="https://img.shields.io/github/license/cloudpetals/stania?style=flat-square&color=000" alt="license" />
+  <img src="https://img.shields.io/github/license/hyg1997/stania?style=flat-square&color=000" alt="license" />
 </p>
 
 <h1 align="center">Stania</h1>
@@ -91,7 +91,7 @@ Per-project only. Doesn't pollute other projects or waste tokens globally.
 <summary>Alternative: curl</summary>
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cloudpetals/stania/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hyg1997/stania/main/install.sh | bash
 ```
 </details>
 
@@ -292,7 +292,7 @@ Stania detects and adapts:
 ## Contributing
 
 ```bash
-git clone https://github.com/cloudpetals/stania.git
+git clone https://github.com/hyg1997/stania.git
 cd stania
 # Edit commands in commands/, skill in skills/st/SKILL.md
 # Test: cd <any-project> && bash /path/to/stania/install.sh
