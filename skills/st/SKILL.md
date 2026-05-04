@@ -53,6 +53,8 @@ State is **advisory, not blocking**. If missing, commands fall back to filesyste
 | /st-next | Anyone | **What should I do now?** (role-aware guidance) |
 | /st-quick | Anyone | T1/T2: validate → commit (no ceremony) |
 | /st-contract | Lead | Define API contract → generates mocks + ports + client |
+| /st-contract --from-stub | Lead | Promote frontend stub to official contract |
+| /st-need-contract | Frontend | Create stub + mock + issue when endpoint missing |
 | /st-agent | Lead | Launch autonomous backend implementation |
 | /st-ui | Frontend | Generate component from UI spec |
 | /st-ui --refine | Frontend | Adjust styles in natural language |
@@ -79,6 +81,8 @@ After any command completes, suggest the logical next step:
 - After /st-bootstrap → "Run /st-model to define your domain"
 - After /st-model → "Run /st-contract <first-feature> to define first API"
 - After /st-contract → "Run /st-agent <name> to start backend. Frontend: write spec in ui-specs/"
+- After /st-need-contract → "Stub created. Continue building UI against mock. Lead will review."
+- After /st-contract --from-stub → "Contract promoted. Run /st-agent <name> for backend."
 - After /st-agent completes → "PR ready. Review then /st-integrate"
 - After /st-ui → "Review in Storybook. Adjust with /st-ui --refine"
 - After /st-integrate → "Run /st-e2e <name> for end-to-end tests"

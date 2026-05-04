@@ -56,17 +56,20 @@ done 2>/dev/null
 ### Si role = "lead"
 
 Prioridad:
-1. PRs listas para review (reviewDecision != APPROVED, no draft)
-2. Contratos sin agent implementando (sin branch `feat/<name>`)
-3. Issues con label "blocked" o "needs-decision"
-4. Integraciones pendientes (contratos con agent mergeado pero sin wiring)
+1. Stubs de frontend pendientes de aprobacion (`ls packages/contracts/src/*.stub.ts` o issues con label `contract-needed`)
+2. PRs listas para review (reviewDecision != APPROVED, no draft)
+3. Contratos sin agent implementando (sin branch `feat/<name>`)
+4. Issues con label "blocked" o "needs-decision"
+5. Integraciones pendientes (contratos con agent mergeado pero sin wiring)
 
 ### Si role = "frontend"
 
 Prioridad:
-1. UI specs en `.stania/ui-specs/` sin implementacion (buscar archivos en `apps/` o `src/` que correspondan)
-2. Issues asignados al usuario con label "frontend" o "ui"
-3. Contratos listos (mergeados) que necesitan UI
+1. Stubs pendientes de aprobacion (archivos `.stub.ts` en `packages/contracts/src/`)
+2. UI specs en `.stania/ui-specs/` sin implementacion (buscar archivos en `apps/` o `src/` que correspondan)
+3. Issues asignados al usuario con label "frontend" o "ui"
+4. Contratos listos (mergeados) que necesitan UI
+5. Endpoints que necesita pero no existen → `/st-need-contract`
 
 ### Si role = "pm"
 

@@ -4,6 +4,7 @@ Genera: tipos TypeScript, mock handlers (MSW), port interfaces, y API client.
 ## Modos
 
 - `/st-contract <name>` — Define contrato nuevo interactivamente
+- `/st-contract --from-stub <name>` — Promueve un stub creado por frontend a contrato oficial
 - `/st-contract --extract` — Extrae contratos de endpoints existentes en el proyecto
 
 ## Modo: Nuevo contrato
@@ -109,6 +110,25 @@ git add packages/contracts/
 git commit -m "contract([name]): define API contract with mocks and client"
 git push
 ```
+
+## Modo: --from-stub
+
+Cuando un frontend dev creo un stub con `/st-need-contract`:
+
+1. Leer `packages/contracts/src/{name}.stub.ts` como punto de partida
+2. Revisar y refinar tipos, validaciones, error codes
+3. Renombrar a `packages/contracts/src/{name}.ts` (contrato oficial)
+4. Generar mock handlers, port interfaces, y API client (pasos 3-5 del modo nuevo)
+5. Eliminar archivos `.stub.ts` y mock stubs
+6. Actualizar `packages/contracts/src/index.ts` con el export
+7. Cerrar el GitHub issue con label `contract-needed`:
+```bash
+# Buscar issue del stub
+gh issue list --label "contract-needed" --search "[name]" --json number,title --limit 1
+# Cerrar con referencia al contrato
+gh issue close [number] --comment "Contrato aprobado: packages/contracts/src/[name].ts"
+```
+8. Commit + push
 
 ## Modo: --extract
 
