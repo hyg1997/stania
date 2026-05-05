@@ -15,6 +15,37 @@ Verificar:
 Si no hay spec y la tarea es trivial (fix, config): proceder sin spec.
 Si toca domain: spec obligatoria.
 
+## Mode Detection
+
+Read `.stania/config.json` → `mode` field.
+
+### Si mode = "solo"
+
+**NO approval gates**. Build all layers in sequence without pausing:
+1. Domain layer (VOs, aggregate, events, ports, tests)
+2. Application layer (handler, DTOs, tests) 
+3. Infrastructure layer (adapters, DI, integration tests)
+4. Wiring (endpoint, DI registration)
+5. Run /st-check internally
+6. Report result to user
+
+If building multiple aggregates: spawn parallel agents (one per aggregate using Agent tool with run_in_background: true). Each agent builds all 4 layers + runs check. Only surface when done or blocked.
+
+**Skip**: spec file requirement (inline plan is enough), progress.json approval updates between layers.
+**Keep**: progress.json update at the end, Clean Architecture rules, domain model reading.
+
+Format for reporting after solo build:
+```
+✅ Built [Aggregate] — all layers + tests
+   Domain: X files | App: Y files | Infra: Z files | Tests: W
+   Check: typecheck ✓ lint ✓ tests ✓ (N passed)
+⚡ ~15K tokens estimated
+```
+
+### Si mode = "team" (default, current behavior)
+
+Keep ALL existing behavior unchanged. The approval gates between layers remain.
+
 ## Loop de generacion
 
 ### Fase A: Domain Layer
@@ -33,9 +64,10 @@ Reglas de domain:
 - Result pattern para operaciones que pueden fallar
 - Cada metodo publico tiene al menos un test
 
-Presentar al usuario. Esperar aprobacion.
+Si mode = "team": Presentar al usuario. Esperar aprobacion.
+Si mode = "solo": Continuar sin pausa.
 
-Al aprobar, actualizar `.stania/progress.json`:
+Al aprobar (o automaticamente en solo), actualizar `.stania/progress.json`:
 ```json
 { "status": "in-progress", "layers": { "domain": true, "tests": true } }
 ```
@@ -53,9 +85,10 @@ Reglas:
 - Result<DTO, Error>, no excepciones para flujos de negocio
 - Fakes en tests, no mocks (implementar interface con Map/Array en memoria)
 
-Presentar al usuario. Esperar aprobacion.
+Si mode = "team": Presentar al usuario. Esperar aprobacion.
+Si mode = "solo": Continuar sin pausa.
 
-Al aprobar:
+Al aprobar (o automaticamente en solo):
 ```json
 { "layers": { "domain": true, "application": true, "tests": true } }
 ```

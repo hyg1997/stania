@@ -34,6 +34,7 @@ Si no existe CLAUDE.md, pregunta:
    - DB: Postgres / MySQL / MongoDB / SQLite
 4. **Arquitectura?** Clean Architecture + DDD / Simple MVC
 5. **Monorepo?** Si tiene frontend + backend separado → si
+6. **Team size?** Solo (just you + Claude) / Team (multiple devs)
 
 No preguntar todo — inferir lo posible del contexto.
 
@@ -63,6 +64,7 @@ Crear `.stania/config.json`:
 {
   "version": "2.0.0",
   "projectName": "[nombre]",
+  "mode": "solo|team",
   "stack": {
     "language": "typescript",
     "framework": "[next | fastify | none]",

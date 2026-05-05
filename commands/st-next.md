@@ -9,6 +9,9 @@ Leer `.stania/me.json`:
 { "role": "lead" | "frontend" | "pm" }
 ```
 
+Also read `.stania/config.json` → `mode`.
+If mode = "solo", skip role detection — treat as "solo" role regardless of me.json.
+
 Si no existe, preguntar:
 
 > ¿Cuál es tu rol? (lead / frontend / pm)
@@ -70,6 +73,27 @@ Prioridad:
 3. Issues asignados al usuario con label "frontend" o "ui"
 4. Contratos listos (mergeados) que necesitan UI
 5. Endpoints que necesita pero no existen → `/st-need-contract`
+
+### Si mode = "solo"
+
+Prioridad:
+1. Uncommitted changes that need /st-check or commit
+2. Next pending aggregate from progress.json (by bounded context priority: core > supporting > generic)
+3. Test/mutation gaps (aggregates with low mutation score)
+4. E2E tests needed for completed features
+
+Never suggest:
+- "Review PR" or "Approve stub" (no PRs in solo)
+- "Create issue" (no issues in solo)
+- Role-specific actions (you're everything)
+
+Example output:
+```
+NEXT:
+→ Uncommitted changes (routine edit): /st-check
+→ Build Nutrition/Pantry (next pending core aggregate): /st-agent Nutrition/Pantry
+→ Mutation gap: Training/Routine at 0% — add domain tests: /st-mutate Training/Routine
+```
 
 ### Si role = "pm"
 

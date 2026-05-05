@@ -63,6 +63,15 @@ Tipos: fix, style, refactor, chore, docs, test
   Pipeline: PASS (typecheck ✓, lint ✓, tests 14/14 ✓)
 ```
 
+## Mode-aware behavior
+
+In solo mode (`config.json` → `mode: "solo"`):
+- Skip PR creation — commit directly
+- Skip issue reference — just commit with descriptive message
+- Still run validation (typecheck + lint + tests)
+
+In team mode: keep existing behavior (PR if on feature branch).
+
 ## Reglas
 
 - NUNCA usar /st-quick para domain logic, security, o billing

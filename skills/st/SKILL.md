@@ -10,10 +10,15 @@ You are operating under Stania engineering discipline.
 ## Role Detection (ALWAYS check first)
 
 On session start, read `.stania/me.json`. If missing, ask:
-"¿Cuál es tu rol? (lead / frontend / pm)" → create file.
+"¿Cuál es tu rol? (lead / frontend / pm / solo)" → create file.
+
+Also read `.stania/config.json` for the `mode` field. If `mode` is `"solo"`:
+- Skip role distinction — user is everything (lead + frontend + backend)
+- me.json role should default to `"solo"`
+- All commands available, no role filtering
 
 ```json
-{ "role": "lead|frontend|pm", "name": "Name" }
+{ "role": "lead|frontend|pm|solo", "name": "Name" }
 ```
 
 ### Role-based behavior:
@@ -21,13 +26,23 @@ On session start, read `.stania/me.json`. If missing, ask:
 **lead** — Full access. Proactively suggest: pending PR reviews, contracts without agents, integrations ready.
 **frontend** — Only suggest: /st-ui, /st-ui --refine, /st-ui --new, /st-next. Hide backend complexity.
 **pm** — Only suggest: /st-board, /st-next, /st-status. Focus on progress and blockers.
+**solo** — Full access. No approval gates, no PRs, no issues. Direct commit to main. Autonomous execution.
 
 When user asks a vague question ("qué hago?" / "what's next?"), run /st-next logic internally.
 
 ## Two Modes
 
 ### Solo mode (one engineer + Claude):
-SPEC → BUILD → CHECK → SHIP → RETRO
+PLAN → DO → CHECK → SHIP (no approval gates, no PRs, no issues)
+
+**Solo mode flow**:
+- `/st-build` in solo: builds all layers at once (domain → app → infra → tests), NO approval gates between layers, spawns parallel agents for independent aggregates
+- `/st-contract` in solo: just generates types in contracts package, skip mocks/client/ports generation, skip issue creation
+- `/st-ship` in solo: commit directly to main, no PR creation, just audit + commit
+- `/st-agent` in solo: works inline on main branch (no feature branches), runs check internally, only surfaces when DONE or BLOCKED
+- `/st-next` in solo: suggests "Build next aggregate" or "Fix mutation gap", never "Review PR" or "Approve stub"
+- `/st-need-contract` in solo: skip — you define and build directly
+- `/st-spec` in solo: quick inline plan, no spec file creation
 
 ### Team mode (contract-first, parallel):
 CONTRACT → agents implement backend + frontend implements UI → INTEGRATE → SHIP
@@ -46,33 +61,47 @@ State is **advisory, not blocking**. If missing, commands fall back to filesyste
 └── ui-specs/{name}.md   ← UI component specs (for /st-ui)
 ```
 
+## Solo Mode Autonomy Rules
+
+When mode = "solo", agents operate autonomously:
+1. Build all layers (domain → app → infra → tests) without pausing
+2. Run /st-check internally before surfacing
+3. Only surface to user when:
+   - DONE: all layers built + check passed → "Ready to test at [URL]"
+   - BLOCKED: needs a design decision the code can't answer
+   - NEVER: "here's what I did, what do you think?"
+4. Multiple aggregates → spawn parallel agents (one per aggregate)
+5. No GitHub issues, no PRs, no branches — commit directly to main
+6. Reports should be <100 words
+
 ## Pipeline Commands
 
-| Command | Who | Purpose |
-|---------|-----|---------|
-| /st-next | Anyone | **What should I do now?** (role-aware guidance) |
-| /st-quick | Anyone | T1/T2: validate → commit (no ceremony) |
-| /st-contract | Lead | Define API contract → generates mocks + ports + client |
-| /st-contract --from-stub | Lead | Promote frontend stub to official contract |
-| /st-need-contract | Frontend | Create stub + mock + issue when endpoint missing |
-| /st-agent | Lead | Launch autonomous backend implementation |
-| /st-ui | Frontend | Generate component from UI spec |
-| /st-ui --refine | Frontend | Adjust styles in natural language |
-| /st-board | PM/Lead | Show GitHub Issues/PRs status board |
-| /st-integrate | Lead | Replace mocks with real backend + e2e |
-| /st-e2e | Lead | Generate Playwright E2E tests from contracts |
-| /st-migrate | Lead | Handle contract evolution (breaking changes) |
-| /st-seed | Anyone | Generate realistic test fixtures |
-| /st-deps | Lead | Dependency health audit + auto-fix |
-| /st-spec | Lead | Formal spec (when contract isn't enough) |
-| /st-build | Lead | Layer-by-layer generation with approval |
-| /st-check | Anyone | Validation pipeline (parallel) |
-| /st-ship | Lead | Incremental audit + PR |
-| /st-retro | Anyone | Session close |
-| /st-bootstrap | Lead | Project setup (repo, deploy, CI/CD) |
-| /st-model | Lead | DDD domain model extraction |
-| /st-mutate | Anyone | Mutation testing (on demand) |
-| /st-status | Anyone | Progress from .stania/progress.json |
+| Command | Who | Purpose | Solo |
+|---------|-----|---------|------|
+| /st-next | Anyone | **What should I do now?** (role-aware guidance) | No "Review PR"/"Approve stub" suggestions |
+| /st-quick | Anyone | T1/T2: validate → commit (no ceremony) | Same |
+| /st-contract | Lead | Define API contract → generates mocks + ports + client | Types only, skip mocks/client/ports/issues |
+| /st-contract --from-stub | Lead | Promote frontend stub to official contract | Skip — build directly |
+| /st-need-contract | Frontend | Create stub + mock + issue when endpoint missing | Skip — define and build directly |
+| /st-agent | Lead | Launch autonomous backend implementation | Inline on main, no branches, auto-check |
+| /st-ui | Frontend | Generate component from UI spec | Same |
+| /st-ui --refine | Frontend | Adjust styles in natural language | Same |
+| /st-board | PM/Lead | Show GitHub Issues/PRs status board | Same (reads local state) |
+| /st-integrate | Lead | Replace mocks with real backend + e2e | Skip — no mocks to replace |
+| /st-e2e | Lead | Generate Playwright E2E tests from contracts | Same |
+| /st-migrate | Lead | Handle contract evolution (breaking changes) | Same |
+| /st-seed | Anyone | Generate realistic test fixtures | Same |
+| /st-deps | Lead | Dependency health audit + auto-fix | Same |
+| /st-spec | Lead | Formal spec (when contract isn't enough) | Quick inline plan, no spec file |
+| /st-build | Lead | Layer-by-layer generation with approval | All layers at once, no gates, parallel aggregates |
+| /st-check | Anyone | Validation pipeline (parallel) | Same |
+| /st-ship | Lead | Incremental audit + PR | Audit + commit to main, no PR |
+| /st-retro | Anyone | Session close | Same |
+| /st-bootstrap | Lead | Project setup (repo, deploy, CI/CD) | Skip branch protection, skip labels |
+| /st-model | Lead | DDD domain model extraction | Same |
+| /st-mutate | Anyone | Mutation testing (on demand) | Same |
+| /st-status | Anyone | Progress from .stania/progress.json | Same |
+| /st-cost | Anyone | Token estimation for current session | Same |
 
 ## Proactive Guidance
 
@@ -133,6 +162,22 @@ After any command completes, suggest the logical next step:
 6. **testFlags config**: Read `config.json` → `testFlags.fast` for flags.
 7. **Session split**: After heavy iterations, suggest new session.
 8. **Context7 MCP**: If available, use for API hallucination checks.
+
+## Token Efficiency — Estimation
+
+After each command completes, show estimated token usage:
+
+Estimation heuristics:
+- File read: chars / 3.5 tokens (code averages ~3.5 chars/token)
+- Bash output: chars / 4 tokens
+- Edit/Write: new content chars / 3.5 tokens
+- System prompt + CLAUDE.md: ~3000 tokens (loaded once per agent)
+- Agent spawn overhead: ~4000 tokens (system + context)
+
+Format:
+⚡ ~X tokens (Y reads, Z bash, W edits) | session: ~total
+
+Track cumulative across the session. Show after each / command.
 
 ## Stack Detection
 

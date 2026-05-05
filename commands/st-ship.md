@@ -1,5 +1,9 @@
 Auditoria pre-deploy / pre-PR. Solo correr cuando el usuario esta listo para deploy o PR.
 
+## Mode Detection
+
+Read `.stania/config.json` → `mode` field.
+
 ## Paso 1: Estado del repo
 
 ```bash
@@ -70,6 +74,24 @@ Presentar al usuario para que confirme:
 ```
 
 ## Paso 5: PR o Deploy
+
+### Si mode = "solo"
+
+Skip PR creation entirely. Solo flow:
+1. Run audit (validation + hardening) — same as team
+2. Commit all changes with descriptive message
+3. Push to main directly (ask user first: "Push to main?")
+4. No PR body generation, no gh pr create
+
+The audit steps (Paso 1-4) remain the same for both modes.
+The manual checklist (Paso 4) becomes shorter in solo:
+
+Solo checklist:
+[ ] Feature works (tested manually)
+[ ] No console.log / debug prints
+[ ] No TODOs without resolution
+
+### Si mode = "team" (default)
 
 Si el usuario quiere PR:
 - Sugerir titulo (corto, <70 chars)
