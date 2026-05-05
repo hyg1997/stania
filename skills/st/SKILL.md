@@ -65,14 +65,16 @@ State is **advisory, not blocking**. If missing, commands fall back to filesyste
 
 When mode = "solo", agents operate autonomously:
 1. Build all layers (domain → app → infra → tests) without pausing
-2. Run /st-check internally before surfacing
+2. Run typecheck + tests internally (skip lint — orchestrator handles lint once at end)
 3. Only surface to user when:
    - DONE: all layers built + check passed → "Ready to test at [URL]"
    - BLOCKED: needs a design decision the code can't answer
    - NEVER: "here's what I did, what do you think?"
-4. Multiple aggregates → spawn parallel agents (one per aggregate)
-5. No GitHub issues, no PRs, no branches — commit directly to main
-6. Reports should be <100 words
+4. Multiple aggregates → group by bounded context, spawn one agent per context (not per aggregate)
+5. Agent prompts include inline code patterns — agents do NOT read external pattern files
+6. No GitHub issues, no PRs, no branches — commit directly to main
+7. After all agents complete, orchestrator runs single lint pass: `biome check --write` (or equivalent)
+8. Reports should be <100 words
 
 ## Pipeline Commands
 
@@ -162,6 +164,11 @@ After any command completes, suggest the logical next step:
 6. **testFlags config**: Read `config.json` → `testFlags.fast` for flags.
 7. **Session split**: After heavy iterations, suggest new session.
 8. **Context7 MCP**: If available, use for API hallucination checks.
+9. **Inline patterns**: In solo mode, agent prompts include code pattern snippets directly — agents do NOT read pattern files. Saves ~8K tokens per agent.
+10. **Bounded context grouping**: When spawning multiple agents, group aggregates by bounded context — 1 agent per context, not 1 per aggregate. Saves ~4K tokens per merged agent and eliminates shared-file conflicts.
+11. **Orchestrator lint**: In solo mode, agents skip lint (only typecheck + tests). Orchestrator runs single `biome check --write` (or equivalent) AFTER all agents complete. Saves ~2K tokens per agent and avoids redundant lint passes.
+12. **Frontend inline patterns**: Agent prompts include dark-theme design tokens, Next.js page skeleton, query hook template, and nav structure — frontend agents do NOT read existing pages for reference.
+13. **Audit before frontend**: After backend agents complete, run a quick audit agent to catch naming inconsistencies, missing files, or port mismatches BEFORE spawning frontend agents. Catches issues early, prevents cascading errors.
 
 ## Token Efficiency — Estimation
 
