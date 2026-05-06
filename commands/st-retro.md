@@ -1,36 +1,26 @@
-Cierre de sesion. Rapido y util. Solo captura lo que cambia el comportamiento futuro.
+Session close. Quick — only capture what changes future behavior.
 
-## Proceso
+## Process
 
-```bash
-git log --oneline --since="today"
-```
+1. `git log --oneline --since="6 hours ago"` (fallback: `git log --oneline -10`)
+2. If architectural decision made → create ADR in docs/decisions/, update CLAUDE.md
+3. If no decisions (most sessions) → only update progress.json
 
-### Si hubo decision arquitectonica significativa:
-- Crear ADR en docs/decisions/ (solo si cambia como se trabaja en futuro)
-- Actualizar CLAUDE.md solo si agrega info que Claude necesita en proximas sesiones
+## Update state
 
-### Si NO hubo decisiones (la mayoria de sesiones):
-- Solo actualizar progress.json y sugerir siguiente paso
-
-## Actualizar estado
-
-Si `.stania/progress.json` existe:
 ```json
-{ "lastSession": { "date": "[ISO8601]", "summary": "[1 oracion]" } }
+{ "lastSession": { "date": "<ISO8601>", "summary": "<1 sentence>" } }
 ```
 
-## Reporte (maximo 5 lineas)
+## Report (max 5 lines)
 
 ```
-Completado: [lista corta]
-Pendiente:  [lista corta]
-Proximo:    /st-spec → [Aggregate] | /st-build → [feature] | nada pendiente
+Completado: [short list]
+Pendiente:  [short list]
+Proximo:    /st-spec → [X] | /st-build → [Y] | nada pendiente
 ```
 
-## Reglas
-
-- Si no hubo decisiones → NO crear ADR, NO proponer cambios a docs
-- No ser verbose — el usuario quiere cerrar en 10 segundos
-- Si algo quedo pendiente critico, una linea clara
-- NUNCA volcar resumen largo de la sesion
+## Rules
+- No decisions → no ADR, no doc changes
+- Never dump long session summary
+- User wants to close in 10 seconds

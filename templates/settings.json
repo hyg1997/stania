@@ -18,6 +18,14 @@
       "Bash(ls:*)"
     ]
   },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "command": "pnpm typecheck 2>&1 | tail -5"
+      }
+    ]
+  },
   "mcpServers": {
     "context7": {
       "command": "npx",

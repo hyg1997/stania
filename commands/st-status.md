@@ -1,82 +1,59 @@
-Muestra el estado de implementacion del proyecto. Lee `.stania/progress.json` primero,
-con fallback a escaneo del filesystem. Util para retomar trabajo entre sesiones.
+Project implementation status. Reads `.stania/progress.json` with filesystem fallback.
 
-## Paso 1: Leer estado
+## Modes
 
-### Fuente primaria: .stania/progress.json
+- `/st-status` — Aggregate status table (default)
+- `/st-status --prod` — Production readiness checklist
 
-Si existe, leerlo. Contiene estado preciso por aggregate:
-- status: pending / in-progress / done / failed
-- layers: domain, application, infrastructure, tests (true/false cada uno)
-- specPath: ruta a la spec aprobada
-- lastCheck, lastBuild: timestamps
+If `--prod`, jump to "Modo --prod" section.
 
-Tambien leer lastSession para mostrar cuando fue la ultima sesion.
+## Default mode
 
-### Fallback: escaneo del filesystem
-
-Si `.stania/progress.json` no existe, buscar bounded contexts en:
-1. `.stania/domain-model.json`
-2. CLAUDE.md (seccion bounded contexts)
-3. docs/02-architecture.md
-4. Estructura de directorios (src/domain/*, apps/*/src/domain/*)
-
-Si no encuentra modelo: "No encuentro bounded contexts. Corre /st-model primero."
-
-Para cada aggregate detectado, escanear:
-
-```bash
-# Domain
-find . -path "*/domain/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -50
-
-# Application
-find . -path "*/application/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
-
-# Infrastructure
-find . -path "*/infrastructure/*" -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
-
-# Tests
-find . \( -path "*/tests/*" -o -path "*test*" -o -path "*spec*" \) -name "*.ts" -o -name "*.py" | grep -v node_modules | head -30
-```
-
-## Paso 2: Reportar
+1. Read `.stania/progress.json`. If missing: "Run /st-model first."
+2. Report table per bounded context:
 
 ```
 === PROJECT STATUS ===
-Last session: [fecha] — [resumen]
+Last session: [date] — [summary]
 
-Bounded Context: [nombre]
-+--------------+--------+-------+-------+-------+------+
-| Aggregate    | Status | Domain| App   | Infra | Tests|
-+--------------+--------+-------+-------+-------+------+
-| Appointment  | done   |  Y    |  Y    |  -    |  Y   |
-| Tenant       | done   |  Y    |  Y    |  Y    |  Y   |
-| VoiceSession | pending|  -    |  -    |  -    |  -   |
-+--------------+--------+-------+-------+-------+------+
+Context: Training
+| Aggregate      | Status | D | A | I | T |
+|----------------|--------|---|---|---|---|
+| Routine        | done   | Y | Y | Y | Y |
+| WorkoutSession | done   | Y | Y | Y | Y |
 
-Bounded Context: [nombre]
-+--------------+--------+-------+-------+-------+------+
-| Aggregate    | Status | Domain| App   | Infra | Tests|
-+--------------+--------+-------+-------+-------+------+
-| ...          |        |       |       |       |      |
-+--------------+--------+-------+-------+-------+------+
-
-Overall: 4/12 aggregates complete (33%)
-Specs:   3 aprobadas en .stania/specs/
+Overall: X/Y complete (N%)
 ```
 
-## Paso 3: Sugerir siguiente accion
+3. Suggest next action based on first incomplete aggregate.
 
-Basado en el estado, en orden de prioridad:
-1. Si hay aggregates sin spec → "/st-spec para [aggregate]"
-2. Si hay spec sin domain → "/st-build para [aggregate]"
-3. Si hay domain sin app → "/st-build para [aggregate] (falta application)"
-4. Si hay app sin infra → "/st-build para [aggregate] (falta infrastructure)"
-5. Si hay layers sin tests → "Faltan tests para [aggregate]"
-6. Si hay done sin lastCheck → "/st-check para validar"
-7. Si todo esta completo → "/st-check para validar, despues /st-ship"
+---
 
-Mostrar:
-```
-NEXT: /st-spec → VoiceSession (first incomplete aggregate)
-```
+## Modo --prod
+
+**Run ALL scanning as a subagent** (Agent tool) to keep output out of main context.
+
+The subagent should check these 6 categories and return a structured report:
+
+1. **Persistence**: InMemory repos vs Pg repos, migrations, DATABASE_URL
+2. **Auth**: middleware, provider, route protection
+3. **Deploy**: Dockerfile, CI/CD, Vercel, Cloud Run, health check
+4. **Security**: CORS, rate limiting, secrets, headers, Zod validation
+5. **Observability**: structured logging, error tracking (Sentry), health endpoint
+6. **Tests**: unit count, E2E files, integration tests, coverage
+
+Subagent prompt should include: "Run all checks via grep/find, report as `[x]`/`[ ]` checklist per category. End with count of passing vs total. Max 40 lines output."
+
+### After subagent returns
+
+Display the report as-is, then generate action plan:
+- Each step: `[S/M/L] What to do → why → command/skill`
+- Order: persistence → auth → security → deploy → observability → tests
+- Max 9 steps
+- End with: `RESUMEN: X/Y passing. NEXT: [first step]`
+
+## Rules
+- Default mode: read progress.json only, no filesystem scanning
+- --prod: always delegate scanning to subagent
+- Never invent state — scan real project
+- Max 9 steps in plan
