@@ -40,7 +40,35 @@ Biggest consumers:
 - [specific tips based on what was detected]
 ```
 
+### History tracking
+
+After showing estimates, save to `.stania/costs.json` (create if missing):
+
+```json
+{
+  "sessions": [
+    {
+      "date": "<ISO8601>",
+      "commands": ["/st-check", "/st-build Training/Routine"],
+      "estimatedTokens": 33000,
+      "biggestConsumer": "/st-build Training/Routine"
+    }
+  ]
+}
+```
+
+If `--history` flag: show last 10 sessions + averages:
+```
+SESSION HISTORY (last 10):
+May 01:  ~25K tokens (3 commands) — /st-build was biggest
+May 03:  ~45K tokens (5 commands) — /st-agent was biggest
+May 07:  ~33K tokens (3 commands) — /st-build was biggest
+AVG: ~34K tokens/session
+```
+
 ### Reglas
 - Mostrar siempre al final del output: "Estimates are approximate. Check your dashboard for actual usage."
 - Si detecta ineficiencias (ej: se leyo el mismo archivo 3 veces), sugerir fix
 - No bloquear ni requerir confirmacion — es informativo
+- costs.json should be gitignored
+- Max 50 sessions stored (remove oldest when exceeding)

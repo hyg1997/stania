@@ -127,6 +127,25 @@ pnpm typecheck --filter web 2>&1 | tail -5
 pnpm test --filter web -- --testPathPattern="<name>" --bail 2>&1 | tail -10
 ```
 
+### 7.5. Visual self-verification (agent-browser)
+
+If `agent-browser` is installed:
+
+```bash
+if command -v agent-browser &>/dev/null; then
+  agent-browser open http://localhost:3000/<page-route>
+  agent-browser snapshot  # accessibility tree (~1K tokens)
+fi
+```
+
+Verify via snapshot:
+- Component renders (key refs present in tree)
+- 4 states work (loading skeleton → empty CTA → error retry → success content)
+- No broken layout (semantic structure matches spec)
+- Interactive elements are accessible (buttons, inputs have labels)
+
+If issues found: fix before commit. If agent-browser not installed: skip.
+
 ### 8. Commit
 
 ```bash

@@ -53,6 +53,31 @@ done
 ```
 Update any mismatched flags silently. Report only if changes were made.
 
+## Fase 4: REVIEW.md generation
+
+Write findings to `.stania/reviews/REVIEW-<date>.md`:
+
+```markdown
+# Code Review — <date>
+## Validation
+Typecheck: PASS | Lint: PASS | Tests: PASS (N/N)
+## Hardening
+Architecture: PASS | Cache: PASS | Security: PASS
+## AI Code Smells
+[list findings or "None detected"]
+## Mutation Readiness
+[aggregates with >80% coverage → "Ready for /st-mutate"]
+[aggregates with <80% coverage → "Needs more tests"]
+```
+
+If `.stania/reviews/` doesn't exist, create it. Add to `.gitignore`.
+
+## Fase 5: Auto-detect mutation testing readiness
+
+Check coverage per aggregate (from last test run or coverage report).
+If any aggregate has domain coverage >80% and hasn't been mutation-tested:
+→ Append to report: "Mutation ready: [aggregate]. Run /st-mutate [aggregate]"
+
 ## Report
 
 ```
@@ -60,8 +85,10 @@ Update any mismatched flags silently. Report only if changes were made.
 Typecheck: PASS | Lint: PASS | Tests: PASS (545/545)
 === HARDENING ===
 Architecture: PASS | Cache: PASS | Security: PASS
+=== MUTATION READINESS ===
+Ready: Routine, WorkoutSession | Needs tests: Pantry
 === VERDICT ===
-[PASS] Ready for commit
+[PASS] Ready for commit — Review saved to .stania/reviews/
 ```
 
 Update `.stania/progress.json` → `lastCheck` for affected aggregates.
@@ -70,3 +97,4 @@ Update `.stania/progress.json` → `lastCheck` for affected aggregates.
 - Truncate ALL command output (tail -5 / tail -10)
 - Max 2 autofix attempts per failure
 - PASS → "Ready for commit?" | WARN → show findings | FAIL → fix or report
+- Always generate REVIEW.md (even on PASS — for audit trail)

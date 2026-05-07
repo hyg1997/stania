@@ -17,6 +17,10 @@ If no CLAUDE.md, ask:
 2. Stack? Infer or ask: frontend (Next.js/Nuxt/None), backend (API routes/separate), DB
 3. Architecture? Clean+DDD / MVC / Simple
 4. Team size? Solo / Team
+5. Testing profile? mvp / production / hardened
+   - **mvp**: coverage 60%, no mutation testing, fast iteration
+   - **production**: coverage 80%, mutation threshold 80%
+   - **hardened**: coverage 90%+, mutation threshold 100%, security audit
 
 ## Step 3: GitHub repo
 
@@ -27,10 +31,29 @@ gh repo edit --enable-issues
 
 ## Step 4: Create .stania/
 
-Create `.stania/config.json` with: version, mode, stack, architecture, deploy, team, hardening, testFlags.
+Create `.stania/config.json` with: version, mode, stack, architecture, deploy, team, hardening, testFlags, testingProfile, testing.
+
+Testing profile sets defaults in config.json:
+```json
+{
+  "testingProfile": "mvp|production|hardened",
+  "hardening": {
+    "coverageTarget": { "domain": 60|80|100, "application": 40|60|80, "overall": 60|80|90 },
+    "mutationThreshold": 0|80|100
+  },
+  "testing": {
+    "testAccountEmail": null,
+    "testAccountFlag": "is_test"
+  }
+}
+```
+
 Create `.stania/me.json`: `{ "role": "lead", "name": "<user>" }`
 Create `.stania/team.json` if team mode.
-Add `.stania/me.json` and `.stania/progress.json` to `.gitignore`.
+Create `.stania/specs/` and `.stania/ui-specs/` directories (standardized).
+Create `.stania/reviews/` directory.
+Create `.stania/snapshots.json`: `{ "snapshots": [] }`
+Add `.stania/me.json`, `.stania/progress.json`, `.stania/reviews/`, `.stania/snapshots.json` to `.gitignore`.
 
 ## Step 5: Project structure
 

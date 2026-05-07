@@ -8,7 +8,7 @@
 
 set -e
 
-VERSION="2.3.1"
+VERSION="3.1.0"
 REPO_URL="https://github.com/cloudpetals/stania"
 
 # Colors
@@ -101,7 +101,7 @@ fi
 if [ "$UNINSTALL" = true ]; then
     echo ""
     REMOVED=0
-    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
         target="$TARGET_CMD_DIR/${cmd}.md"
         if [ -f "$target" ]; then
             if [ "$DRY_RUN" = true ]; then
@@ -247,7 +247,7 @@ if [ "$GLOBAL" = false ]; then
     GLOBAL_SKILLS_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
     FOUND_GLOBAL=false
 
-    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
         if [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ]; then
             FOUND_GLOBAL=true
             break
@@ -262,7 +262,7 @@ if [ "$GLOBAL" = false ]; then
         read -p "    Remove global installation? [Y/n] " -n 1 -r
         echo ""
         if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-            for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-mutate st-model st-status; do
+            for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
                 [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ] && rm "$GLOBAL_CMD_DIR/${cmd}.md"
             done
             [ -d "$GLOBAL_SKILLS_DIR/st" ] && rm -rf "$GLOBAL_SKILLS_DIR/st"
@@ -292,14 +292,18 @@ echo -e "    ${BLUE}/st-e2e${NC}        Generate Playwright E2E tests"
 echo -e "    ${BLUE}/st-migrate${NC}    Handle contract evolution"
 echo -e "    ${BLUE}/st-seed${NC}       Generate test fixtures"
 echo -e "    ${BLUE}/st-deps${NC}       Dependency health audit"
-echo -e "    ${BLUE}/st-check${NC}      Validation pipeline"
+echo -e "    ${BLUE}/st-check${NC}      Validate + harden + REVIEW.md"
 echo -e "    ${BLUE}/st-mutate${NC}     Mutation testing"
+echo -e "    ${BLUE}/st-monitor${NC}    E2E against staging/production"
+echo -e "    ${BLUE}/st-health${NC}     Post-deploy smoke test"
 echo ""
 echo -e "  ${BOLD}Engineering pipeline:${NC}"
+echo -e "    ${DIM}/st-resume${NC}      Session resumption + briefing"
 echo -e "    ${DIM}/st-quick${NC}       Fast path (validate + commit)"
 echo -e "    ${DIM}/st-spec${NC}        Formal spec"
-echo -e "    ${DIM}/st-build${NC}       Layer-by-layer generation"
-echo -e "    ${DIM}/st-ship${NC}        Pre-deploy audit + PR"
+echo -e "    ${DIM}/st-build${NC}       Build + visual verification"
+echo -e "    ${DIM}/st-ship${NC}        Audit + schema validation + PR"
+echo -e "    ${DIM}/st-snapshot${NC}    State capture for velocity"
 echo -e "    ${DIM}/st-retro${NC}       Session close"
 echo ""
 

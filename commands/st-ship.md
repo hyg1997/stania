@@ -55,9 +55,36 @@ pnpm test:mutate  # o equivalente
 ```
 
 Reportar mutation score. Si <80% en domain → WARNING.
-Leer threshold de `.stania/config.json` si existe.
+Leer threshold de `.stania/config.json` → `hardening.mutationThreshold` si existe.
 
 Si la herramienta no esta instalada, reportar "skipped" — no bloquear.
+
+## Paso 3.5: API schema validation (Schemathesis)
+
+If backend has OpenAPI spec and `schemathesis` is installed:
+```bash
+if command -v schemathesis &>/dev/null; then
+  schemathesis run http://localhost:<port>/openapi.json --checks all --max-response-time 2000 --hypothesis-max-examples 50 2>&1 | tail -15
+fi
+```
+
+Reports: schema violations, response time issues, unexpected status codes.
+Skip silently if not installed.
+
+## Paso 3.6: Contract vs implementation validation
+
+If `.stania/domain-model.json` and `packages/contracts/` exist:
+```bash
+for contract in packages/contracts/*.ts; do
+  name=$(basename "$contract" .ts)
+  # Check handler exists
+  grep -rn "class.*${name}.*Handler" apps/api/src/ 2>/dev/null | head -1
+  # Check route exists
+  grep -rn "${name}\|$(echo $name | tr '[:upper:]' '[:lower:]')" apps/api/src/**/routes* 2>/dev/null | head -1
+done
+```
+
+Flag any contract without matching handler or route as WARNING.
 
 ## Paso 4: Checklist manual
 

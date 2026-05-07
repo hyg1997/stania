@@ -94,10 +94,16 @@ Types are shared — zero drift.
 ### Overview
 
 ```
-SPEC → BUILD → CHECK → SHIP → RETRO
+RESUME → SPEC → BUILD → CHECK → SHIP → HEALTH → MONITOR → RETRO
 ```
 
 For individual features where you're doing both design and implementation.
+
+### Session Start
+
+```
+/st-resume    → briefing from last session + suggested next action
+```
 
 ### Fast Path (/st-quick)
 
@@ -112,10 +118,12 @@ No spec, no approval gates. Just validated code.
 
 ```
 /st-spec     → invariants, errors, edge cases → .stania/specs/
-/st-build    → domain → application → infrastructure (layer by layer)
-/st-check    → typecheck + lint + tests (parallel) + AI smell scan
-/st-ship     → audit + PR
-/st-retro    → session close
+/st-build    → domain → application → infrastructure (+ visual self-check with agent-browser)
+/st-check    → typecheck + lint + tests (parallel) + AI smell scan + REVIEW.md
+/st-ship     → audit + schema validation + PR
+/st-health   → post-deploy smoke test (endpoints alive?)
+/st-monitor  → E2E tests against production (Playwright + Schemathesis)
+/st-retro    → session close + snapshot
 ```
 
 ---
@@ -186,13 +194,16 @@ Update the spec → run `/st-ui <name>` again.
 
 | File | Purpose | Git |
 |------|---------|-----|
-| `config.json` | Stack, architecture, deploy, team settings | Committed |
+| `config.json` | Stack, architecture, deploy, testing profile | Committed |
 | `domain-model.json` | Bounded contexts, aggregates, events | Committed |
 | `ui-standards.md` | Frontend architecture rules | Committed |
 | `layout-catalog.md` | Pre-defined layout patterns | Committed |
 | `progress.json` | Per-aggregate layer completion | Gitignored |
 | `specs/*.md` | Approved feature specs | Gitignored |
 | `ui-specs/*.md` | UI component specs | Committed |
+| `reviews/` | REVIEW-date.md from /st-check | Gitignored |
+| `snapshots.json` | State snapshots for velocity tracking | Gitignored |
+| `costs.json` | Token cost history per session | Gitignored |
 
 ### Design Rules
 
@@ -315,13 +326,146 @@ jobs:
 
 ---
 
+## Testing Profiles
+
+Set during `/st-bootstrap`. Controls validation rigor across all commands.
+
+| Profile | Coverage (Domain/App/Overall) | Mutation | Schema Validation | Use When |
+|---------|-------------------------------|----------|-------------------|----------|
+| **mvp** | 60% / 40% / 60% | Skipped | Skipped | Prototyping, hackathons, MVPs |
+| **production** | 80% / 60% / 80% | 80% kill rate | If OpenAPI exists | Most production apps |
+| **hardened** | 100% / 80% / 90% | 100% kill rate | Required | Finance, health, compliance |
+
+Profile stored in `.stania/config.json` → `testingProfile`. All commands auto-adapt.
+
+---
+
+## Pre-Production & Production Testing
+
+### Strategy
+
+```
+/st-ship (pre-deploy)
+  ├── Playwright tests (local)
+  ├── Schemathesis API validation (if OpenAPI spec)
+  └── Contract vs implementation check
+        ↓
+/st-deploy
+        ↓
+/st-health (smoke test)
+  ├── Frontend: HTTP 200, load time < 3s
+  ├── API: /health endpoint, response time < 1s
+  └── Critical endpoints: status codes
+        ↓
+/st-monitor (ongoing)
+  ├── Playwright E2E against production URL
+  ├── Schemathesis schema validation
+  └── Authenticated flows (test account)
+```
+
+### Test Account Setup
+
+1. Add to `.stania/config.json`:
+   ```json
+   { "testing": { "testAccountEmail": "test@yourapp.com", "testAccountFlag": "is_test" } }
+   ```
+2. Add `is_test` boolean column to user table
+3. Filter test accounts from analytics and billing
+4. E2E tests authenticate as test account for protected flows
+
+### Optional: CI Monitoring
+
+Add `.github/workflows/monitor.yml` for scheduled production tests:
+```yaml
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx playwright install chromium
+      - run: BASE_URL=${{ secrets.PROD_URL }} npx playwright test --grep @monitor
+```
+
+### Optional: Checkly (SaaS monitoring)
+
+If you want 24/7 monitoring from multiple locations:
+```bash
+npx checkly deploy  # deploys your .spec.ts files as monitors
+```
+Free tier: 10 monitors, 1K browser runs/month.
+
+---
+
+## agent-browser Integration
+
+Vercel's agent-browser provides AI agent browser automation via CLI. Used for visual self-verification during build.
+
+### When it's used
+
+| Command | How | Token Cost |
+|---------|-----|------------|
+| /st-build | Snapshot accessibility tree after generating UI | ~1K tokens |
+| /st-ui | Verify component renders, all 4 states work | ~1K tokens |
+
+### How it works
+
+```bash
+agent-browser open http://localhost:3000/page
+agent-browser snapshot                    # accessibility tree with @refs
+agent-browser click @e3                   # interact by ref
+agent-browser get text @e1               # extract text
+```
+
+Key: uses accessibility tree (~1K tokens) instead of screenshots (~15K tokens).
+If not installed: all commands skip visual verification silently.
+
+### vs Playwright
+
+| Use | Tool |
+|-----|------|
+| AI self-verification during build | agent-browser (token-efficient) |
+| Structured E2E tests in CI | Playwright (deterministic, cross-browser) |
+| Production monitoring | Playwright via /st-monitor |
+| Visual regression | Playwright `toHaveScreenshot()` |
+
+They are complementary, not competing.
+
+---
+
 ## Token Efficiency
 
 | Strategy | Savings |
 |----------|---------|
 | Per-project install (not global) | ~52K tokens/turn in other projects |
 | Output truncation (`\| tail -N`) | ~80% less context from tool output |
+| PreToolUse hook (auto-truncate) | Prevents 5-50K accidental verbose output |
 | Parallel validation (3 simultaneous) | Same result, fewer turns |
 | Incremental /st-ship | Skip re-validation if <10 min |
 | Lazy domain model loading | Only read relevant bounded context |
 | testFlags in config | No re-calculating runner flags |
+| Model routing (Haiku/Sonnet/Opus) | 40-60% on routable commands |
+| Effort-level switching | Up to 3x on simple commands |
+| Subagent delegation for tests | 5-10K tokens/check cycle |
+| /compact after heavy commands | Extends sessions 60-80% |
+| /btw for side questions | Avoids context accumulation |
+| Context7 MCP | 65% less tokens for doc lookups |
+| agent-browser (vs Playwright MCP) | 82% less tokens for visual checks |
+
+### Model Routing Guide
+
+| Model | Commands | Why |
+|-------|----------|-----|
+| Haiku ($1/$5 per 1M) | /st-status, /st-next, /st-cost, /st-health, /st-resume, /st-snapshot | Read-only, simple logic |
+| Sonnet ($3/$15 per 1M) | /st-build, /st-agent, /st-check, /st-ui, /st-e2e, /st-monitor | Implementation, validation |
+| Opus ($5/$25 per 1M) | /st-spec, /st-model, /st-migrate, /st-ship | Architecture, critical decisions |
+
+### Effort Level Guide
+
+| Level | Commands | Savings vs High |
+|-------|----------|-----------------|
+| Low | /st-quick, /st-status, /st-next, /st-health, /st-resume | ~3x cheaper |
+| Medium | /st-build, /st-check, /st-ui, /st-agent, /st-e2e | ~1.5x cheaper |
+| High | /st-spec, /st-model, /st-ship, /st-migrate | Full analysis |

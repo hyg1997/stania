@@ -9,19 +9,23 @@ cross-session state tracking.
 ```
 stania/
 ├── commands/              ← Slash commands (per-project: .claude/commands/)
-│   ├── st-bootstrap.md    ← /st-bootstrap: project setup + .stania/ init
+│   ├── st-bootstrap.md    ← /st-bootstrap: project setup + testing profiles
 │   ├── st-spec.md         ← /st-spec: formal spec, saved to .stania/specs/
-│   ├── st-build.md        ← /st-build: controlled generation with progress tracking
-│   ├── st-check.md        ← /st-check: validate + harden
-│   ├── st-ship.md         ← /st-ship: pre-deploy audit
+│   ├── st-build.md        ← /st-build: controlled generation + agent-browser verification
+│   ├── st-check.md        ← /st-check: validate + harden + REVIEW.md
+│   ├── st-ship.md         ← /st-ship: audit + schema validation
 │   ├── st-retro.md        ← /st-retro: session close
+│   ├── st-resume.md       ← /st-resume: session resumption + briefing
+│   ├── st-monitor.md      ← /st-monitor: E2E against staging/production
+│   ├── st-health.md       ← /st-health: post-deploy smoke test
+│   ├── st-snapshot.md     ← /st-snapshot: state snapshots for velocity
 │   ├── st-mutate.md       ← /st-mutate: mutation testing
 │   ├── st-model.md        ← /st-model: DDD domain model → .stania/domain-model.json
 │   └── st-status.md       ← /st-status: progress from .stania/progress.json
 ├── skills/st/             ← Skill definition (per-project: .claude/skills/st/)
 │   └── SKILL.md           ← Core behavior rules, pipeline spec
 ├── templates/             ← Project templates
-│   └── settings.json      ← Lean permissions for Stania projects
+│   └── settings.json      ← Permissions + PreToolUse hook + Context7 MCP
 ├── docs/                  ← Workflow documentation
 │   └── workflow.md        ← Full engineering workflow reference
 ├── install.sh             ← Per-project installer (default)

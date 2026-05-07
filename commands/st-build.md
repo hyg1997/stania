@@ -133,8 +133,30 @@ go vet ./... 2>&1 | tail -5     # Go
 
 Si typecheck falla → arreglar antes de reportar.
 
+## Visual self-verification (agent-browser)
+
+If `agent-browser` is installed and the build includes UI (frontend files modified):
+
+```bash
+if command -v agent-browser &>/dev/null; then
+  # Start dev server if not running
+  pnpm dev --filter web &
+  sleep 3
+  # Snapshot the page via accessibility tree (compact, ~1K tokens)
+  agent-browser open http://localhost:3000/<route>
+  agent-browser snapshot
+  # Verify key elements exist
+  agent-browser get text @e1  # main heading
+fi
+```
+
+Use accessibility tree snapshots (NOT screenshots) for token efficiency.
+Only verify: page loads, key elements present, no error states visible.
+Skip if agent-browser not installed — never block on this.
+
 Reportar:
 - Archivos creados/modificados
+- Visual check: PASS/SKIP
 - "Listo para /st-check"
 
 ## Sin modelo DDD (architecture = "mvc" o "simple")

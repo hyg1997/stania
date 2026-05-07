@@ -47,6 +47,9 @@ PLAN → DO → CHECK → SHIP (no approval gates, no PRs, no issues)
 ### Team mode (contract-first, parallel):
 CONTRACT → agents implement backend + frontend implements UI → INTEGRATE → SHIP
 
+### Solo → Team migration
+When transitioning from solo to team: update `config.json` → `mode: "team"`, create `team.json`, enable branch protection, create GitHub labels. Existing code stays on main. New features use contract-first flow with branches + PRs.
+
 ## State (.stania/)
 
 State is **advisory, not blocking**. If missing, commands fall back to filesystem scanning.
@@ -54,11 +57,14 @@ State is **advisory, not blocking**. If missing, commands fall back to filesyste
 ```
 .stania/
 ├── me.json              ← Current user role (gitignored)
-├── config.json          ← Stack, architecture, deploy, team settings
+├── config.json          ← Stack, architecture, deploy, testing profile
 ├── domain-model.json    ← Bounded contexts, aggregates, VOs, events
-├── progress.json        ← Per-aggregate implementation status
-├── specs/{slug}.md      ← Approved specs
-└── ui-specs/{name}.md   ← UI component specs (for /st-ui)
+├── progress.json        ← Per-aggregate implementation status (gitignored)
+├── specs/{slug}.md      ← Approved specs (gitignored)
+├── ui-specs/{name}.md   ← UI component specs (committed)
+├── reviews/             ← REVIEW-<date>.md from /st-check (gitignored)
+├── snapshots.json       ← State snapshots for velocity (gitignored)
+└── costs.json           ← Token cost history (gitignored)
 ```
 
 ## Solo Mode Autonomy Rules
@@ -80,6 +86,7 @@ When mode = "solo", agents operate autonomously:
 
 | Command | Who | Purpose | Solo |
 |---------|-----|---------|------|
+| /st-resume | Anyone | **Session resumption** — briefing + next action | Same |
 | /st-next | Anyone | **What should I do now?** (role-aware guidance) | No "Review PR"/"Approve stub" suggestions |
 | /st-quick | Anyone | T1/T2: validate → commit (no ceremony) | Same |
 | /st-contract | Lead | Define API contract → generates mocks + ports + client | Types only, skip mocks/client/ports/issues |
@@ -96,19 +103,23 @@ When mode = "solo", agents operate autonomously:
 | /st-deps | Lead | Dependency health audit + auto-fix | Same |
 | /st-spec | Lead | Formal spec (when contract isn't enough) | Quick inline plan, no spec file |
 | /st-build | Lead | Layer-by-layer generation with approval | All layers at once, no gates, parallel aggregates |
-| /st-check | Anyone | Validation pipeline (parallel) | Same |
-| /st-ship | Lead | Incremental audit + PR | Audit + commit to main, no PR |
+| /st-check | Anyone | Validation + hardening + REVIEW.md | Same |
+| /st-ship | Lead | Audit + schema validation + PR | Audit + commit to main, no PR |
+| /st-monitor | Anyone | Run E2E against staging/production | Same |
+| /st-health | Anyone | Post-deploy smoke test | Same |
+| /st-snapshot | Anyone | Capture state for velocity tracking | Same |
 | /st-retro | Anyone | Session close | Same |
-| /st-bootstrap | Lead | Project setup (repo, deploy, CI/CD) | Skip branch protection, skip labels |
+| /st-bootstrap | Lead | Project setup (repo, deploy, CI/CD, testing profile) | Skip branch protection, skip labels |
 | /st-model | Lead | DDD domain model extraction | Same |
 | /st-mutate | Anyone | Mutation testing (on demand) | Same |
 | /st-status | Anyone | Progress from .stania/progress.json | Same |
-| /st-cost | Anyone | Token estimation for current session | Same |
+| /st-cost | Anyone | Token estimation + history | Same |
 
 ## Proactive Guidance
 
 After any command completes, suggest the logical next step:
 
+- After /st-resume → suggest based on state analysis
 - After /st-bootstrap → "Run /st-model to define your domain"
 - After /st-model → "Run /st-contract <first-feature> to define first API"
 - After /st-contract → "Run /st-agent <name> to start backend. Frontend: write spec in ui-specs/"
@@ -118,7 +129,10 @@ After any command completes, suggest the logical next step:
 - After /st-ui → "Review in Storybook. Adjust with /st-ui --refine"
 - After /st-integrate → "Run /st-e2e <name> for end-to-end tests"
 - After /st-check fails → Suggest specific fix, then "re-run /st-check"
-- After /st-ship → "/st-retro to close session"
+- After /st-check pass → "Review saved. /st-ship when ready or /st-mutate for deeper coverage"
+- After /st-ship → "/st-health to verify deploy, then /st-retro"
+- After /st-deploy → "/st-health to verify, then /st-monitor for ongoing checks"
+- After /st-health fails → "/st-monitor for detailed E2E diagnosis"
 
 ## Core Principles
 
@@ -156,35 +170,37 @@ After any command completes, suggest the logical next step:
 
 ## Token Efficiency Rules
 
-1. **Truncate all tool output**: Always `| tail -N`. Read full only on failure.
+1. **Truncate output**: `| tail -N` always. Full only on failure.
 2. **No duplicate validation**: /st-build does typecheck only.
-3. **Incremental /st-ship**: Skip re-validation if lastCheck < 10 min.
-4. **Parallel validation**: In /st-check, typecheck + lint + tests as 3 simultaneous calls.
-5. **Lazy loading**: Only read the specific aggregate/spec needed.
-6. **testFlags config**: Read `config.json` → `testFlags.fast` for flags.
-7. **Session split**: After heavy iterations, suggest new session.
+3. **Incremental /st-ship**: Skip if lastCheck < 10 min.
+4. **Parallel validation**: typecheck + lint + tests as 3 simultaneous calls.
+5. **Lazy loading**: Only read specific aggregate/spec needed.
+6. **testFlags config**: `config.json` → `testFlags.fast`.
+7. **Proactive /compact**: After heavy commands, suggest `/compact`.
 8. **Context7 MCP**: If available, use for API hallucination checks.
-9. **Inline patterns**: In solo mode, agent prompts include code pattern snippets directly — agents do NOT read pattern files. Saves ~8K tokens per agent.
-10. **Bounded context grouping**: When spawning multiple agents, group aggregates by bounded context — 1 agent per context, not 1 per aggregate. Saves ~4K tokens per merged agent and eliminates shared-file conflicts.
-11. **Orchestrator lint**: In solo mode, agents skip lint (only typecheck + tests). Orchestrator runs single `biome check --write` (or equivalent) AFTER all agents complete. Saves ~2K tokens per agent and avoids redundant lint passes.
-12. **Frontend inline patterns**: Agent prompts include dark-theme design tokens, Next.js page skeleton, query hook template, and nav structure — frontend agents do NOT read existing pages for reference.
-13. **Audit before frontend**: After backend agents complete, run a quick audit agent to catch naming inconsistencies, missing files, or port mismatches BEFORE spawning frontend agents. Catches issues early, prevents cascading errors.
+9. **Inline patterns**: Solo agent prompts include code patterns directly (~8K saved/agent).
+10. **Bounded context grouping**: 1 agent per context, not per aggregate (~4K saved/merge).
+11. **Orchestrator lint**: Agents skip lint; single pass after all complete (~2K saved/agent).
+12. **Frontend inline patterns**: Include design tokens/templates in prompt, don't read files.
+13. **Audit before frontend**: Catch naming/port issues before spawning frontend agents.
+14. **Model routing**: Haiku→read-only cmds, Sonnet→implementation, Opus→architecture. Suggest switch.
+15. **Effort routing**: Low→/st-quick,status,next. Medium→build,check,ui. High→spec,model,ship.
+16. **Subagent delegation**: Delegate test running to Haiku subagent (~5-10K saved/cycle).
+17. **Use /btw**: Side questions via `/btw` to avoid context pollution.
 
-## Token Efficiency — Estimation
+## Token Estimation
 
-After each command completes, show estimated token usage:
+After each /st-* command, show: `⚡ ~X tokens (Y reads, Z bash, W edits) | session: ~total`
+Heuristics: file read = chars/3.5, bash output = chars/4, agent spawn = ~4K base. Details in /st-cost.
 
-Estimation heuristics:
-- File read: chars / 3.5 tokens (code averages ~3.5 chars/token)
-- Bash output: chars / 4 tokens
-- Edit/Write: new content chars / 3.5 tokens
-- System prompt + CLAUDE.md: ~3000 tokens (loaded once per agent)
-- Agent spawn overhead: ~4000 tokens (system + context)
+## Testing Profiles
 
-Format:
-⚡ ~X tokens (Y reads, Z bash, W edits) | session: ~total
+`config.json` → `testingProfile`: mvp (60/40/60, no mutations), production (80/60/80, 80% kill), hardened (100/80/90, 100% kill + Schemathesis). Commands auto-adapt thresholds.
 
-Track cumulative across the session. Show after each / command.
+## Pre-prod & Visual Verification
+
+Post-deploy: /st-health (smoke) → /st-monitor (E2E against prod). Test accounts: `testing.testAccountEmail` in config + `is_test` DB flag.
+agent-browser: If installed, /st-build and /st-ui use accessibility tree snapshots (~1K tokens) for visual self-check. Skip silently if absent.
 
 ## Stack Detection
 
