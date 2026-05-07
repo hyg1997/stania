@@ -108,7 +108,15 @@ When mode = "solo", agents operate autonomously:
 | /st-monitor | Anyone | Run E2E against staging/production | Same |
 | /st-health | Anyone | Post-deploy smoke test | Same |
 | /st-snapshot | Anyone | Capture state for velocity tracking | Same |
-| /st-retro | Anyone | Session close | Same |
+| /st-migrate-db | Lead | Database migrations (generate/apply/rollback) | Same |
+| /st-rollback | Lead | Revert failed deployment | Same |
+| /st-observe | Lead | Observability setup (Sentry/logging/health) | Same |
+| /st-storybook | Frontend | Auto-generate Storybook stories from specs | Same |
+| /st-a11y | Anyone | Deep accessibility audit (WCAG 2.1 AA) | Same |
+| /st-refactor | Anyone | Guided refactoring with validation | Same |
+| /st-perf | Anyone | Lighthouse + bundle + Web Vitals | Same |
+| /st-flag | Lead | Feature flag lifecycle (create/wrap/rollout/cleanup) | Same |
+| /st-retro | Anyone | Session close + snapshot | Same |
 | /st-bootstrap | Lead | Project setup (repo, deploy, CI/CD, testing profile) | Skip branch protection, skip labels |
 | /st-model | Lead | DDD domain model extraction | Same |
 | /st-mutate | Anyone | Mutation testing (on demand) | Same |
@@ -133,6 +141,12 @@ After any command completes, suggest the logical next step:
 - After /st-ship → "/st-health to verify deploy, then /st-retro"
 - After /st-deploy → "/st-health to verify, then /st-monitor for ongoing checks"
 - After /st-health fails → "/st-monitor for detailed E2E diagnosis"
+- After /st-health pass → "/st-observe if not setup, otherwise /st-retro"
+- After /st-migrate-db apply → "/st-check to validate, then /st-ship"
+- After /st-rollback → "Investigate failure, fix, /st-ship again"
+- After /st-perf warns → Suggest specific optimization, then re-check
+- After /st-a11y finds critical → "/st-a11y --fix for auto-repair"
+- After /st-flag create → "Deploy code behind flag, then /st-flag rollout <name> 5"
 
 ## Core Principles
 
@@ -183,10 +197,13 @@ After any command completes, suggest the logical next step:
 11. **Orchestrator lint**: Agents skip lint; single pass after all complete (~2K saved/agent).
 12. **Frontend inline patterns**: Include design tokens/templates in prompt, don't read files.
 13. **Audit before frontend**: Catch naming/port issues before spawning frontend agents.
-14. **Model routing**: Haiku→read-only cmds, Sonnet→implementation, Opus→architecture. Suggest switch.
-15. **Effort routing**: Low→/st-quick,status,next. Medium→build,check,ui. High→spec,model,ship.
-16. **Subagent delegation**: Delegate test running to Haiku subagent (~5-10K saved/cycle).
+14. **Model routing**: Haiku→read-only (status,next,cost,health,resume,snapshot,storybook). Sonnet→implementation (build,check,ui,e2e,monitor,a11y,perf,refactor,flag,observe). Opus→architecture (spec,model,migrate,migrate-db,ship).
+15. **Effort routing**: Low→quick,status,next,health,resume,snapshot. Medium→build,check,ui,agent,e2e,a11y,perf,storybook. High→spec,model,ship,migrate,migrate-db,refactor.
+16. **Subagent delegation**: Use `test-runner` agent (Haiku, effort:low) for tests, `code-scanner` for audits.
 17. **Use /btw**: Side questions via `/btw` to avoid context pollution.
+18. **PreToolUse hook**: Auto-truncate test/build/git/install output via `.claude/hooks/truncate-output.sh`. Saves 80-95%.
+19. **1h cache**: Set `ENABLE_PROMPT_CACHING_1H=1` for longer cache TTL (1h vs 5min default).
+20. **Audit/scan commands**: /st-check, /st-observe, /st-a11y, /st-refactor delegate scanning to code-scanner agent. Verbose output stays isolated.
 
 ## Token Estimation
 

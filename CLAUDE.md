@@ -19,13 +19,26 @@ stania/
 │   ├── st-monitor.md      ← /st-monitor: E2E against staging/production
 │   ├── st-health.md       ← /st-health: post-deploy smoke test
 │   ├── st-snapshot.md     ← /st-snapshot: state snapshots for velocity
+│   ├── st-migrate-db.md   ← /st-migrate-db: database migrations
+│   ├── st-rollback.md     ← /st-rollback: revert failed deployment
+│   ├── st-observe.md      ← /st-observe: observability setup
+│   ├── st-storybook.md    ← /st-storybook: auto-generate stories
+│   ├── st-a11y.md         ← /st-a11y: accessibility audit
+│   ├── st-refactor.md     ← /st-refactor: guided refactoring
+│   ├── st-perf.md         ← /st-perf: Lighthouse + bundle + Web Vitals
+│   ├── st-flag.md         ← /st-flag: feature flag lifecycle
 │   ├── st-mutate.md       ← /st-mutate: mutation testing
 │   ├── st-model.md        ← /st-model: DDD domain model → .stania/domain-model.json
 │   └── st-status.md       ← /st-status: progress from .stania/progress.json
 ├── skills/st/             ← Skill definition (per-project: .claude/skills/st/)
 │   └── SKILL.md           ← Core behavior rules, pipeline spec
 ├── templates/             ← Project templates
-│   └── settings.json      ← Permissions + PreToolUse hook + Context7 MCP
+│   ├── settings.json      ← Permissions + hooks config + Context7 MCP
+│   ├── agents/            ← Haiku subagent definitions
+│   │   ├── test-runner.md ← Run tests at 3-10x lower cost
+│   │   └── code-scanner.md← Audit/scan at 3-10x lower cost
+│   └── hooks/             ← PreToolUse hooks for token optimization
+│       └── truncate-output.sh ← Auto-truncate verbose output (80-95% savings)
 ├── docs/                  ← Workflow documentation
 │   └── workflow.md        ← Full engineering workflow reference
 ├── install.sh             ← Per-project installer (default)

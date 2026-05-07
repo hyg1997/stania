@@ -18,20 +18,32 @@
       "Bash(ls:*)",
       "Bash(curl:*)",
       "Bash(agent-browser:*)",
-      "Bash(schemathesis:*)"
+      "Bash(schemathesis:*)",
+      "Bash(lhci:*)",
+      "Bash(lighthouse:*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "command": "bash -c 'INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\"); if echo \"$CMD\" | grep -qE \"^(pnpm test|pnpm vitest|npx vitest|pytest|go test|pnpm build|npm test|npx playwright)\" && ! echo \"$CMD\" | grep -qE \"tail|head|grep\"; then TRUNCATED=\"$CMD 2>&1 | tail -20\"; echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"allow\\\",\\\"updatedInput\\\":{\\\"command\\\":\\\"$TRUNCATED\\\"}}}\"; else echo \"{}\"; fi'"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/truncate-output.sh"
+          }
+        ]
       }
     ],
     "Stop": [
       {
         "matcher": "",
-        "command": "pnpm typecheck 2>&1 | tail -5"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm typecheck 2>&1 | tail -5"
+          }
+        ]
       }
     ]
   },

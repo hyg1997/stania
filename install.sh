@@ -8,7 +8,7 @@
 
 set -e
 
-VERSION="3.1.0"
+VERSION="3.2.0"
 REPO_URL="https://github.com/cloudpetals/stania"
 
 # Colors
@@ -101,7 +101,7 @@ fi
 if [ "$UNINSTALL" = true ]; then
     echo ""
     REMOVED=0
-    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status st-migrate-db st-rollback st-observe st-storybook st-a11y st-refactor st-perf st-flag; do
         target="$TARGET_CMD_DIR/${cmd}.md"
         if [ -f "$target" ]; then
             if [ "$DRY_RUN" = true ]; then
@@ -196,6 +196,55 @@ if [ -d "$STANIA_DIR/skills/st" ]; then
     fi
 fi
 
+# --- Install Agents ---
+
+if [ -d "$STANIA_DIR/templates/agents" ]; then
+    echo ""
+    echo -e "  ${BOLD}Installing agents...${NC}"
+
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "  ${YELLOW}[dry-run]${NC} Would install agents: test-runner, code-scanner"
+    else
+        if [ "$GLOBAL" = true ]; then
+            AGENTS_DIR="$CLAUDE_CONFIG_DIR/agents"
+        else
+            AGENTS_DIR="$PROJECT_DIR/.claude/agents"
+        fi
+        mkdir -p "$AGENTS_DIR"
+        for agent in "$STANIA_DIR/templates/agents/"*.md; do
+            [ -f "$agent" ] || continue
+            agentname=$(basename "$agent")
+            if [ ! -f "$AGENTS_DIR/$agentname" ] || ! diff -q "$agent" "$AGENTS_DIR/$agentname" > /dev/null 2>&1; then
+                cp "$agent" "$AGENTS_DIR/$agentname"
+                echo -e "  ${GREEN}+${NC}  Agent: $(basename "$agentname" .md)"
+            fi
+        done
+    fi
+fi
+
+# --- Install Hooks ---
+
+if [ "$GLOBAL" = false ] && [ -d "$STANIA_DIR/templates/hooks" ]; then
+    echo ""
+    echo -e "  ${BOLD}Installing hooks...${NC}"
+
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "  ${YELLOW}[dry-run]${NC} Would install hooks"
+    else
+        HOOKS_DIR="$PROJECT_DIR/.claude/hooks"
+        mkdir -p "$HOOKS_DIR"
+        for hook in "$STANIA_DIR/templates/hooks/"*; do
+            [ -f "$hook" ] || continue
+            hookname=$(basename "$hook")
+            if [ ! -f "$HOOKS_DIR/$hookname" ] || ! diff -q "$hook" "$HOOKS_DIR/$hookname" > /dev/null 2>&1; then
+                cp "$hook" "$HOOKS_DIR/$hookname"
+                chmod +x "$HOOKS_DIR/$hookname"
+                echo -e "  ${GREEN}+${NC}  Hook: $hookname"
+            fi
+        done
+    fi
+fi
+
 # --- Install project settings (per-project only) ---
 
 if [ "$GLOBAL" = false ]; then
@@ -247,7 +296,7 @@ if [ "$GLOBAL" = false ]; then
     GLOBAL_SKILLS_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
     FOUND_GLOBAL=false
 
-    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
+    for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status st-migrate-db st-rollback st-observe st-storybook st-a11y st-refactor st-perf st-flag; do
         if [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ]; then
             FOUND_GLOBAL=true
             break
@@ -262,7 +311,7 @@ if [ "$GLOBAL" = false ]; then
         read -p "    Remove global installation? [Y/n] " -n 1 -r
         echo ""
         if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-            for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status; do
+            for cmd in st-bootstrap st-spec st-build st-check st-ship st-retro st-resume st-monitor st-health st-snapshot st-mutate st-model st-status st-migrate-db st-rollback st-observe st-storybook st-a11y st-refactor st-perf st-flag; do
                 [ -f "$GLOBAL_CMD_DIR/${cmd}.md" ] && rm "$GLOBAL_CMD_DIR/${cmd}.md"
             done
             [ -d "$GLOBAL_SKILLS_DIR/st" ] && rm -rf "$GLOBAL_SKILLS_DIR/st"
@@ -288,23 +337,30 @@ echo -e "    ${GREEN}/st-integrate${NC}  Connect frontend to real backend"
 echo -e "    ${GREEN}/st-board${NC}      GitHub status board"
 echo ""
 echo -e "  ${BOLD}Quality & maintenance:${NC}"
-echo -e "    ${BLUE}/st-e2e${NC}        Generate Playwright E2E tests"
-echo -e "    ${BLUE}/st-migrate${NC}    Handle contract evolution"
-echo -e "    ${BLUE}/st-seed${NC}       Generate test fixtures"
-echo -e "    ${BLUE}/st-deps${NC}       Dependency health audit"
-echo -e "    ${BLUE}/st-check${NC}      Validate + harden + REVIEW.md"
-echo -e "    ${BLUE}/st-mutate${NC}     Mutation testing"
-echo -e "    ${BLUE}/st-monitor${NC}    E2E against staging/production"
-echo -e "    ${BLUE}/st-health${NC}     Post-deploy smoke test"
+echo -e "    ${BLUE}/st-check${NC}       Validate + harden + REVIEW.md"
+echo -e "    ${BLUE}/st-e2e${NC}         Generate Playwright E2E tests"
+echo -e "    ${BLUE}/st-mutate${NC}      Mutation testing"
+echo -e "    ${BLUE}/st-a11y${NC}        Deep accessibility audit"
+echo -e "    ${BLUE}/st-perf${NC}        Lighthouse + bundle + Web Vitals"
+echo -e "    ${BLUE}/st-refactor${NC}    Guided refactoring"
+echo -e "    ${BLUE}/st-monitor${NC}     E2E against staging/production"
+echo -e "    ${BLUE}/st-health${NC}      Post-deploy smoke test"
+echo ""
+echo -e "  ${BOLD}Operations:${NC}"
+echo -e "    ${BLUE}/st-migrate-db${NC}  Database migrations (Drizzle/Prisma)"
+echo -e "    ${BLUE}/st-rollback${NC}    Revert failed deployment"
+echo -e "    ${BLUE}/st-observe${NC}     Observability setup (Sentry/logging)"
+echo -e "    ${BLUE}/st-flag${NC}        Feature flag lifecycle"
+echo -e "    ${BLUE}/st-storybook${NC}   Auto-generate component stories"
 echo ""
 echo -e "  ${BOLD}Engineering pipeline:${NC}"
-echo -e "    ${DIM}/st-resume${NC}      Session resumption + briefing"
-echo -e "    ${DIM}/st-quick${NC}       Fast path (validate + commit)"
-echo -e "    ${DIM}/st-spec${NC}        Formal spec"
-echo -e "    ${DIM}/st-build${NC}       Build + visual verification"
-echo -e "    ${DIM}/st-ship${NC}        Audit + schema validation + PR"
-echo -e "    ${DIM}/st-snapshot${NC}    State capture for velocity"
-echo -e "    ${DIM}/st-retro${NC}       Session close"
+echo -e "    ${DIM}/st-resume${NC}       Session resumption + briefing"
+echo -e "    ${DIM}/st-quick${NC}        Fast path (validate + commit)"
+echo -e "    ${DIM}/st-spec${NC}         Formal spec"
+echo -e "    ${DIM}/st-build${NC}        Build + visual verification"
+echo -e "    ${DIM}/st-ship${NC}         Audit + schema validation + PR"
+echo -e "    ${DIM}/st-snapshot${NC}     State capture for velocity"
+echo -e "    ${DIM}/st-retro${NC}        Session close"
 echo ""
 
 if [ "$GLOBAL" = false ]; then

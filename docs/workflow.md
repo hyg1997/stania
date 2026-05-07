@@ -399,6 +399,90 @@ Free tier: 10 monitors, 1K browser runs/month.
 
 ---
 
+## Operations Commands
+
+### Database Migrations (/st-migrate-db)
+
+```
+/st-migrate-db                    → show migration status
+/st-migrate-db generate <name>    → generate new migration
+/st-migrate-db apply              → apply pending (with confirmation)
+/st-migrate-db rollback           → rollback last migration
+/st-migrate-db validate           → check schema consistency
+```
+
+Auto-detects ORM: Drizzle, Prisma, Knex. Flags destructive operations (DROP TABLE/COLUMN).
+
+### Deployment Rollback (/st-rollback)
+
+```
+/st-rollback          → rollback both frontend + backend
+/st-rollback --web    → Vercel rollback (promote previous deployment)
+/st-rollback --api    → Cloud Run rollback (shift traffic to previous revision)
+```
+
+Includes health verification after rollback. Warns if DB migration needs reverting.
+
+### Observability (/st-observe)
+
+```
+/st-observe           → audit: error tracking, logging, health endpoint
+/st-observe --setup   → install Sentry + Pino + health endpoint
+/st-observe --check   → verify observability is working
+```
+
+Delegates scanning to code-scanner subagent (Haiku) for token efficiency.
+
+### Feature Flags (/st-flag)
+
+```
+/st-flag create <name>                → create flag (PostHog/Flagsmith/env var)
+/st-flag wrap <name>                  → wrap code with flag check
+/st-flag rollout <name> <percentage>  → gradual rollout (0→5→25→50→100)
+/st-flag cleanup <name>               → remove flag after stable rollout
+```
+
+---
+
+## Quality Commands
+
+### Accessibility (/st-a11y)
+
+```
+/st-a11y          → full WCAG 2.1 AA audit (static + runtime + keyboard)
+/st-a11y <page>   → audit specific page
+/st-a11y --fix    → auto-fix common issues (alt text, ARIA, focus styles)
+```
+
+### Performance (/st-perf)
+
+```
+/st-perf              → Lighthouse CI + bundle analysis + Web Vitals
+/st-perf --lighthouse → Lighthouse only (targets: perf≥90, a11y≥95, bp≥90)
+/st-perf --bundle     → Bundle size analysis (target: <200KB first load per route)
+/st-perf --vitals     → Core Web Vitals (LCP<2.5s, INP<200ms, CLS<0.1)
+```
+
+### Refactoring (/st-refactor)
+
+```
+/st-refactor                    → scan for opportunities (duplication, large files, dead code)
+/st-refactor <target>           → refactor specific module
+/st-refactor --smell duplication → fix specific smell
+```
+
+Always validates with tests before and after. Reverts if tests fail.
+
+### Storybook (/st-storybook)
+
+```
+/st-storybook --init    → setup Storybook
+/st-storybook           → generate stories for all components without stories
+/st-storybook <name>    → generate story with 5 variants (default, loading, empty, error, mobile)
+```
+
+---
+
 ## agent-browser Integration
 
 Vercel's agent-browser provides AI agent browser automation via CLI. Used for visual self-verification during build.
@@ -466,6 +550,71 @@ They are complementary, not competing.
 
 | Level | Commands | Savings vs High |
 |-------|----------|-----------------|
-| Low | /st-quick, /st-status, /st-next, /st-health, /st-resume | ~3x cheaper |
-| Medium | /st-build, /st-check, /st-ui, /st-agent, /st-e2e | ~1.5x cheaper |
-| High | /st-spec, /st-model, /st-ship, /st-migrate | Full analysis |
+| Low | /st-quick, /st-status, /st-next, /st-health, /st-resume, /st-snapshot | ~3x cheaper |
+| Medium | /st-build, /st-check, /st-ui, /st-agent, /st-e2e, /st-a11y, /st-perf, /st-storybook | ~1.5x cheaper |
+| High | /st-spec, /st-model, /st-ship, /st-migrate, /st-migrate-db, /st-refactor | Full analysis |
+
+---
+
+## Advanced Token Optimization
+
+### Custom Haiku Agents
+
+Stania includes two pre-built agents in `.claude/agents/` that run on Haiku at 3-10x lower cost:
+
+**test-runner**: Executes tests and returns only pass/fail + failure names.
+```yaml
+model: haiku
+effort: low
+maxTurns: 5
+```
+
+**code-scanner**: Scans codebase for patterns/issues. Used by /st-check, /st-observe, /st-a11y, /st-refactor.
+```yaml
+model: haiku
+effort: low
+maxTurns: 8
+```
+
+### PreToolUse Hook
+
+`.claude/hooks/truncate-output.sh` auto-intercepts verbose commands:
+
+| Pattern | Action | Savings |
+|---------|--------|---------|
+| `pnpm test`, `pytest`, `go test` | Append `\| tail -20` | 80-95% |
+| `pnpm build`, `npx tsc` | Append `\| tail -10` | 80-90% |
+| `git log`, `git diff` | Append `\| head -50` | 70-90% |
+| `pnpm install`, `npm install` | Append `\| tail -5` | 90-95% |
+
+Real-world benchmark (EcoTokens project): **89.6% total reduction** across 4,129 hook executions.
+
+### Environment Variables for Optimization
+
+```bash
+# Extend prompt cache from 5 min to 1 hour
+export ENABLE_PROMPT_CACHING_1H=1
+
+# Cap thinking tokens (reduces cost on simple tasks)
+export MAX_THINKING_TOKENS=8000
+
+# Move machine-specific info out of system prompt (better cache sharing in CI)
+# Use with: claude --exclude-dynamic-system-prompt-sections
+```
+
+### Session Management
+
+- `/compact Focus on code changes`: guided compaction preserving what matters
+- `/btw <question>`: side questions that never enter main history
+- `/clear` + `/rename`: reset between unrelated tasks
+- Auto-compaction triggers at ~83.5% of context window
+
+### Cost Baselines (per session)
+
+| Session Type | Estimated Tokens | Estimated Cost |
+|-------------|-----------------|----------------|
+| Quick fix (/st-quick) | ~5K | ~$0.02 |
+| Single aggregate build | ~15-20K | ~$0.08 |
+| Full pipeline (spec→ship) | ~50-80K | ~$0.30 |
+| Multi-aggregate build (3 agents) | ~60-100K | ~$0.50 |
+| Full day (10+ commands) | ~100-200K | ~$1.00 |
